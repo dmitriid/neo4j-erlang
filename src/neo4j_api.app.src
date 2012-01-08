@@ -1,0 +1,11 @@
+{application, neo4j_rest_api,
+ [
+  {description, "Neo4j REST API client"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
