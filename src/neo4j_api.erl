@@ -2,6 +2,14 @@
 -module(neo4j_api, [URI]).
 
 %%%_* Exports ==========================================================
+%%%_* High Level API ---------------------------------------------------
+-export([ getBaseUri/0
+        , performCypherQuery/1
+        , performGremlinScript/1
+        , version/0
+        ]).
+
+%%%_* Low Level API ----------------------------------------------------
 -export([ addToNodeIndex/2
         , addToRelationshipIndex/2
         , allPaths/2
@@ -69,6 +77,20 @@
         ]).
 
 %%%_* Code =============================================================
+%%%_* High Level API ---------------------------------------------------
+getBaseUri() ->
+  URI.
+
+performCypherQuery(Query) ->
+  invokeGraphDatabaseExtension("CypherPlugin", "execute_query", Query).
+
+performGremlinScript(Script) ->
+  invokeGraphDatabaseExtension("GremlinPlugin", "execute_script", Script).
+
+version() ->
+  "1.5".
+
+%%%_* Low Level API ----------------------------------------------------
 addToNodeIndex(PindexName, Data) ->
   rest_client:request(post, URI++"index/node/"++PindexName, Data).
 
