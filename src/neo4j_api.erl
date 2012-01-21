@@ -1,5 +1,5 @@
 %%% @doc Provides client for Neo4j's REST API v1.5
--module(neo4j_api, [URI]).
+-module(neo4j_api, [BaseURI]).
 
 %%%_* Exports ==========================================================
 %%%_* High Level API ---------------------------------------------------
@@ -283,8 +283,13 @@ singlePath(PnodeId, Data) ->
 traverse(PnodeId, PreturnType, Data) ->
   rest_client:request(post, j(["node",PnodeId,"traverse",PreturnType]), Data).
 
-j(Path) ->
-  string:join(lists:map(fun s/1, [URI|Path]), "/").
+j([])    -> BaseURI;
+j(Path0) ->
+  Path = filename:join(lists:map(fun s/1, Path0)),
+  case lists:last(BaseURI) of
+    $/ -> BaseURI++Path;
+    _  -> BaseURI++"/"++Path
+  end.
 
 s(A) when is_atom(A)    -> erlang:atom_to_list(A);
 s(I) when is_integer(I) -> erlang:integer_to_list(I);
