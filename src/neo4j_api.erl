@@ -116,22 +116,22 @@ deleteAllRelationshipProperties(PrelationshipId) ->
   rest_client:request(delete, j(["relationship",PrelationshipId,"properties"])).
 
 deleteFromNodeIndex(Pvalue, PindexName, Pkey, Pid) ->
-  rest_client:request(delete, j(["index","node",PindexName,"",Pkey,"",Pvalue,"",Pid])).
+  rest_client:request(delete, j(["index","node",PindexName,Pkey,Pvalue,Pid])).
 
 deleteFromNodeIndexNoKeyValue(PindexName, Pid) ->
-  rest_client:request(delete, j(["index","node",PindexName,"",Pid])).
+  rest_client:request(delete, j(["index","node",PindexName,Pid])).
 
 deleteFromNodeIndexNoValue(PindexName, Pkey, Pid) ->
-  rest_client:request(delete, j(["index","node",PindexName,"",Pkey,"",Pid])).
+  rest_client:request(delete, j(["index","node",PindexName,Pkey,Pid])).
 
 deleteFromRelationshipIndex(PindexName, Pid) ->
-  rest_client:request(delete, j(["index","relationship",PindexName,"",Pid])).
+  rest_client:request(delete, j(["index","relationship",PindexName,Pid])).
 
 deleteFromRelationshipIndex(Pvalue, PindexName, Pkey, Pid) ->
-  rest_client:request(delete, j(["index","relationship",PindexName,"",Pkey,"",Pvalue,"",Pid])).
+  rest_client:request(delete, j(["index","relationship",PindexName,Pkey,Pvalue,Pid])).
 
 deleteFromRelationshipIndexNoValue(PindexName, Pkey, Pid) ->
-  rest_client:request(delete, j(["index","relationship",PindexName,"",Pkey,"",Pid])).
+  rest_client:request(delete, j(["index","relationship",PindexName,Pkey,Pid])).
 
 deleteNode(PnodeId) ->
   rest_client:request(delete, j(["node",PnodeId])).
@@ -176,37 +176,37 @@ getHtmlBrowseJavascript() ->
   rest_client:request(get, j(["resource","htmlbrowse.js"])).
 
 getIndexedNodes(PindexName, Pkey, Pvalue) ->
-  rest_client:request(get, j(["index","node",PindexName,"",Pkey,"",Pvalue])).
+  rest_client:request(get, j(["index","node",PindexName,Pkey,Pvalue])).
 
 getIndexedNodes(Pkey, Pvalue) ->
-  rest_client:request(get, j(["index","auto","node",Pkey,"",Pvalue])).
+  rest_client:request(get, j(["index","auto","node",Pkey,Pvalue])).
 
 getIndexedNodesByQuery(PindexName, Data) ->
   rest_client:request(get, j(["index","node",PindexName]), Data).
 
 getIndexedNodesByQuery(PindexName, Pkey, Data) ->
-  rest_client:request(get, j(["index","node",PindexName,"",Pkey]), Data).
+  rest_client:request(get, j(["index","node",PindexName,Pkey]), Data).
 
 getIndexedRelationships(PindexName, Pkey, Pvalue) ->
-  rest_client:request(get, j(["index","relationship",PindexName,"",Pkey,"",Pvalue])).
+  rest_client:request(get, j(["index","relationship",PindexName,Pkey,Pvalue])).
 
 getIndexedRelationships(Pkey, Pvalue) ->
-  rest_client:request(get, j(["index","auto","relationship",Pkey,"",Pvalue])).
+  rest_client:request(get, j(["index","auto","relationship",Pkey,Pvalue])).
 
 getIndexedRelationshipsByQuery(PindexName, Data) ->
   rest_client:request(get, j(["index","relationship",PindexName]), Data).
 
 getIndexedRelationshipsByQuery(PindexName, Pkey, Data) ->
-  rest_client:request(get, j(["index","relationship",PindexName,"",Pkey]), Data).
+  rest_client:request(get, j(["index","relationship",PindexName,Pkey]), Data).
 
 getNode(PnodeId) ->
   rest_client:request(get, j(["node",PnodeId])).
 
 getNodeExtensionDescription(Pname, PnodeId, Pmethod) ->
-  rest_client:request(get, j(["ext",Pname,"node",PnodeId,"",Pmethod])).
+  rest_client:request(get, j(["ext",Pname,"node",PnodeId,Pmethod])).
 
 getNodeFromIndexUri(PindexName, Pkey, Pvalue, Pid) ->
-  rest_client:request(get, j(["index","node",PindexName,"",Pkey,"",Pvalue,"",Pid])).
+  rest_client:request(get, j(["index","node",PindexName,Pkey,Pvalue,Pid])).
 
 getNodeIndexRoot() ->
   rest_client:request(get, j(["index","node"])).
@@ -218,16 +218,16 @@ getNodeRelationships(PnodeId, Pdirection) ->
   rest_client:request(get, j(["node",PnodeId,"relationships",Pdirection])).
 
 getNodeRelationships(PnodeId, Pdirection, Ptypes) ->
-  rest_client:request(get, j(["node",PnodeId,"relationships",Pdirection,"",Ptypes])).
+  rest_client:request(get, j(["node",PnodeId,"relationships",Pdirection,Ptypes])).
 
 getRelationship(PrelationshipId) ->
   rest_client:request(get, j(["relationship",PrelationshipId])).
 
 getRelationshipExtensionDescription(Pname, PrelationshipId, Pmethod) ->
-  rest_client:request(get, j(["ext",Pname,"relationship",PrelationshipId,"",Pmethod])).
+  rest_client:request(get, j(["ext",Pname,"relationship",PrelationshipId,Pmethod])).
 
 getRelationshipFromIndexUri(PindexName, Pkey, Pvalue, Pid) ->
-  rest_client:request(get, j(["index","relationship",PindexName,"",Pkey,"",Pvalue,"",Pid])).
+  rest_client:request(get, j(["index","relationship",PindexName,Pkey,Pvalue,Pid])).
 
 getRelationshipIndexRoot() ->
   rest_client:request(get, j(["index","relationship"])).
@@ -245,10 +245,10 @@ invokeGraphDatabaseExtension(Pname, Pmethod, Data) ->
   rest_client:request(post, j(["ext",Pname,"graphdb",Pmethod]), Data).
 
 invokeNodeExtension(Pname, PnodeId, Pmethod, Data) ->
-  rest_client:request(post, j(["ext",Pname,"node",PnodeId,"",Pmethod]), Data).
+  rest_client:request(post, j(["ext",Pname,"node",PnodeId,Pmethod]), Data).
 
 invokeRelationshipExtension(Pname, PrelationshipId, Pmethod, Data) ->
-  rest_client:request(post, j(["ext",Pname,"relationship",PrelationshipId,"",Pmethod]), Data).
+  rest_client:request(post, j(["ext",Pname,"relationship",PrelationshipId,Pmethod]), Data).
 
 jsonCreateNodeIndex(Data) ->
   rest_client:request(post, j(["index","node"]), Data).
@@ -257,13 +257,13 @@ jsonCreateRelationshipIndex(Data) ->
   rest_client:request(post, j(["index","relationship"]), Data).
 
 pagedTraverse(PnodeId, PreturnType, PtraverserId) ->
-  rest_client:request(get, j(["node",PnodeId,"paged","traverse",PreturnType,"",PtraverserId])).
+  rest_client:request(get, j(["node",PnodeId,"paged","traverse",PreturnType,PtraverserId])).
 
 performBatchOperations(Data) ->
   rest_client:request(post, j(["batch"]), Data).
 
 removePagedTraverser(PnodeId, PreturnType, PtraverserId) ->
-  rest_client:request(delete, j(["node",PnodeId,"paged","traverse",PreturnType,"",PtraverserId])).
+  rest_client:request(delete, j(["node",PnodeId,"paged","traverse",PreturnType,PtraverserId])).
 
 setAllNodeProperties(PnodeId, Data) ->
   rest_client:request(put, j(["node",PnodeId,"properties"]), Data).
