@@ -1,9 +1,12 @@
 %%% @doc Provides client for Neo4j's REST API v1.5
 -module(neo4j_api, [BaseURI]).
 
+-compile({no_auto_import, [ error/1 ]}).
+
 %%%_* Exports ==========================================================
 %%%_* High Level API ---------------------------------------------------
 -export([ getBaseUri/0
+        , getNodeId/1
         , performCypherQuery/1
         , performGremlinScript/1
         , version/0
@@ -80,6 +83,14 @@
 %%%_* High Level API ---------------------------------------------------
 getBaseUri() ->
   j([]).
+
+getNodeId(Node) ->
+  try
+    NodeURI = erlang:binary_to_list(kf(b("self"), Node)),
+    NodeId = erlang:list_to_integer(filename:basename(NodeURI)),
+    {ok, NodeId}
+  catch _:_ -> error(undefined)
+  end.
 
 performCypherQuery(Query) ->
   invokeGraphDatabaseExtension("CypherPlugin", "execute_query", Query).
@@ -287,6 +298,7 @@ singlePath(PnodeId, Data) ->
 traverse(PnodeId, PreturnType, Data) ->
   rest_client:request(post, j(["node",PnodeId,"traverse",PreturnType]), Data).
 
+%%%_* Internals --------------------------------------------------------
 j([])    -> BaseURI;
 j(Path0) ->
   Path = filename:join(lists:map(fun s/1, Path0)),
@@ -295,7 +307,25 @@ j(Path0) ->
     _  -> BaseURI++"/"++Path
   end.
 
+error({error, _}=Error) -> Error;
+error(Error)            -> error({error, Error}).
+
+%%%_* Helpers ----------------------------------------------------------
+kf(Key, List) -> kf(Key, List, undefined).
+
+kf(Key, List, Default) ->
+  case lists:keyfind(Key, 1, List) of
+    {Key, Value} -> Value;
+    false        -> Default
+  end.
+
+b(B) when is_binary(B) -> unicode:characters_to_list(B);
+b(S) when is_list(S)   -> unicode:characters_to_binary(S).
+
 s(A) when is_atom(A)    -> erlang:atom_to_list(A);
 s(I) when is_integer(I) -> erlang:integer_to_list(I);
 s(F) when is_float(F)   -> erlang:float_to_list(F);
 s(S)                    -> S.
+
+%%% Mode: Erlang
+%%% End.
