@@ -214,10 +214,14 @@ getNodeIndexRoot() ->
 getNodeProperty(PnodeId, Pkey) ->
   rest_client:request(get, j(["node",PnodeId,"properties",Pkey])).
 
-getNodeRelationships(PnodeId, Pdirection) ->
+getNodeRelationships(PnodeId, Pdirection)
+  when Pdirection =:= in orelse Pdirection =:= "in" orelse
+       Pdirection =:= out orelse Pdirection =:= "out" ->
   rest_client:request(get, j(["node",PnodeId,"relationships",Pdirection])).
 
-getNodeRelationships(PnodeId, Pdirection, Ptypes) ->
+getNodeRelationships(PnodeId, Pdirection, Ptypes)
+  when Pdirection =:= in orelse Pdirection =:= "in" orelse
+       Pdirection =:= out orelse Pdirection =:= "out" ->
   rest_client:request(get, j(["node",PnodeId,"relationships",Pdirection,Ptypes])).
 
 getRelationship(PrelationshipId) ->
