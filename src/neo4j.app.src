@@ -1,4 +1,4 @@
-{application, neo4j_rest_api,
+{application, neo4j,
  [
   {description, "Neo4j REST API client"},
   {vsn, "1"},
