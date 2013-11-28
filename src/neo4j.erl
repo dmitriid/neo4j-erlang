@@ -19,6 +19,7 @@
         , delete_node/2
         , get_node_properties/2
         , set_node_properties/3
+        , get_node_property/3
         , get_relationship/2
         , create_relationship/4
         , create_relationship/5
@@ -197,6 +198,19 @@ set_node_properties(Neo, Node, Props) ->
       update(Neo, URI, jsonx:encode(Props))
   end.
 
+%%
+%% http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html
+%%
+
+-spec get_node_property(neo4j_root(), neo4j_node() | neo4j_id(), binary()) -> term() | {error, term()}.
+get_node_property(Neo, Node, Prop) when is_binary(Prop) ->
+  case get_node(Neo, Node) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_node{property = URI} ->
+      retrieve(Neo, replace_param(URI, <<"key">>, Prop))
+  end;
+get_node_property(_, _, _) ->
+  {error, invalid_property}.
 
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-relationship-by-id
