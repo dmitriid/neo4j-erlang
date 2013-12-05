@@ -20,6 +20,10 @@
         , get_node_properties/2
         , set_node_properties/3
         , get_node_property/3
+        , set_node_property/4
+        , get_relationships/3
+        , get_typed_relationships/3
+        , get_typed_relationships/4
         , get_relationship/2
         , create_relationship/4
         , create_relationship/5
@@ -27,6 +31,7 @@
         , get_relationship_properties/2
         , set_relationship_properties/3
         , get_relationship_property/3
+        , set_relationship_property/4
         ]).
 
 %%_* Defines ===================================================================
@@ -149,7 +154,7 @@ create_node(Neo, Props) ->
 %%
 -spec get_node( neo4j_root()
               , neo4j_id()
-              ) -> neo4j_node() | {error, not_found}.
+              ) -> neo4j_node() | {error, term()}.
 get_node(_Neo, #neo4j_node{} = Node) ->
   Node;
 get_node(Neo, Id0) ->
@@ -189,7 +194,7 @@ get_node_properties(Neo, Node) ->
 %% http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-update-node-properties
 %%
 -spec set_node_properties( neo4j_root()
-                         , neo4j_relationship() | neo4j_id()
+                         , neo4j_node() | neo4j_id()
                          , proplist:proplist()) -> ok | {error, term()}.
 set_node_properties(Neo, Node, Props) ->
   case get_node(Neo, Node) of
@@ -213,9 +218,69 @@ get_node_property(_, _, _) ->
   {error, invalid_property}.
 
 %%
-%% http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-relationship-by-id
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-set-property-on-node
 %%
--spec get_relationship(neo4j_root(), neo4j_id() | neo4j_relationship()) -> neo4j_relationship().
+-spec set_node_property( neo4j_root()
+                       , neo4j_node() | neo4j_id()
+                       , binary()
+                       , term()
+                       ) -> ok | {error, term()}.
+set_node_property(Neo, Node, Prop, Val) when is_binary(Prop) ->
+  case get_node(Neo, Node) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_node{properties = URI} ->
+      Payload = jsonx:encode(Val),
+      update(Neo, <<URI/binary, "/", Prop/binary, "/">>, Payload)
+  end;
+set_node_property(_, _, _, _) ->
+  {error, invalid_property}.
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-all-relationships
+%%
+-spec get_relationships( neo4j_root()
+                       , neo4j_node | neo4j_id()
+                       , all | in | out
+                       ) -> [neo4j_relationship()] | {error, term()}.
+get_relationships(Neo, Node0, Direction) ->
+  case get_node(Neo, Node0) of
+    {error, Reason} -> {error, Reason};
+    Node -> get_relationship_by_direction(Neo, Node, Direction)
+  end.
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-all-relationships
+%%
+-spec get_typed_relationships( neo4j_root()
+                             , neo4j_node | neo4j_id()
+                             , binary()
+                             ) -> [neo4j_relationship()] | {error, term()}.
+get_typed_relationships(Neo, Node0, Type) ->
+  case get_node(Neo, Node0) of
+    {error, Reason} -> {error, Reason};
+    Node -> get_relationship_by_type(Neo, Node, Type)
+  end.
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-typed-relationships
+%%
+-spec get_typed_relationships( neo4j_root()
+                             , neo4j_node | neo4j_id()
+                             , binary()
+                             , all | in | out
+                             ) -> [neo4j_relationship()] | {error, term()}.
+get_typed_relationships(Neo, Node0, Type, Direction) ->
+  case get_node(Neo, Node0) of
+    {error, Reason} -> {error, Reason};
+    Node -> get_relationship_by_type(Neo, Node, Type, Direction)
+  end.
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-typed-relationships
+%%
+-spec get_relationship(neo4j_root(), neo4j_id() | neo4j_relationship()) -> neo4j_relationship() | {error, term()}.
 get_relationship(_Neo, #neo4j_relationship{} = Relationship) ->
   Relationship;
 get_relationship(Neo, Id0) ->
@@ -323,6 +388,23 @@ get_relationship_property(Neo, Relationship, Prop) when is_binary(Prop) ->
 get_relationship_property(_, _, _) ->
   {error, invalid_property}.
 
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-set-single-property-on-a-relationship
+%%
+-spec set_relationship_property( neo4j_root()
+                               , neo4j_relationship() | neo4j_id()
+                               , binary()
+                               , term()
+                               ) -> ok | {error, term()}.
+set_relationship_property(Neo, Relationship, Prop, Val) when is_binary(Prop) ->
+  case get_relationship(Neo, Relationship) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_relationship{properties = URI} ->
+      Payload = jsonx:encode(Val),
+      update(Neo, <<URI/binary, "/", Prop/binary, "/">>, Payload)
+  end;
+set_relationship_property(_, _, _, _) ->
+  {error, invalid_property}.
 
 %%_* Internal ==================================================================
 
@@ -332,7 +414,7 @@ get_relationship_property(_, _, _) ->
 -spec get_root(binary()) -> neo4j_root() | {error, term()}.
 get_root(BaseURI) when is_list(BaseURI)   -> get_root(list_to_binary(BaseURI));
 get_root(BaseURI) when is_binary(BaseURI) ->
-  case hackney:request(get, BaseURI, [{<<"Accept">>, <<"application/json">>}]) of
+  case hackney:request(get, BaseURI, headers()) of
     {error, Reason} -> {error, Reason};
     {ok, StatusCode, _, Client} when StatusCode /= 200 ->
       {ok, Body, _} = hackney:body(Client),
@@ -376,6 +458,7 @@ create(Neo, URI, Payload) ->
     {error, Reason} -> {error, Reason};
     {ok, 201, _, Client} ->
       {ok, Body, _} = hackney:body(Client),
+      io:format("~p~n", [Body]),
       {_, Decoder} = lists:keyfind(<<"decoder">>, 1, Neo),
       Decoder(Body);
     {ok, _, _, Client} ->
@@ -427,6 +510,37 @@ delete(_Neo, URI) ->
       {error, jsonx:decode(Body, [{format, proplist}])}
   end.
 
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-all-relationships
+%%
+-spec get_relationship_by_direction(neo4j_root(), neo4j_node(), all | in | out) -> [neo4j_relationship()] | {error, term()}.
+get_relationship_by_direction(Neo, #neo4j_node{all_relationships = URI}, all) ->
+  retrieve(Neo, URI);
+get_relationship_by_direction(Neo, #neo4j_node{incoming_relationships = URI}, in) ->
+  retrieve(Neo, URI);
+get_relationship_by_direction(Neo, #neo4j_node{outgoing_relationships = URI}, out) ->
+  retrieve(Neo, URI);
+get_relationship_by_direction(_, _, _) ->
+  {error, invalid_relationship_direction}.
+
+-spec get_relationship_by_type(neo4j_root(), neo4j_node(), binary()) -> [neo4j_relationship()] | {error, term()}.
+get_relationship_by_type(Neo, Node, Type) ->
+  get_relationship_by_type(Neo, Node, Type, all).
+
+-spec get_relationship_by_type( neo4j_root()
+                              , neo4j_node()
+                              , binary()
+                              , all | in | out
+                              ) -> [neo4j_relationship()] | {error, term()}.
+get_relationship_by_type(Neo, #neo4j_node{all_typed_relationships = URI}, Type, all) ->
+  retrieve(Neo, replace_param(URI, <<"-list|&|types">>, uri_encode(Type)));
+get_relationship_by_type(Neo, #neo4j_node{incoming_typed_relationships = URI}, Type, in) ->
+  retrieve(Neo, replace_param(URI, <<"-list|&|types">>, uri_encode(Type)));
+get_relationship_by_type(Neo, #neo4j_node{outgoing_typed_relationships = URI}, Type, out) ->
+  retrieve(Neo, replace_param(URI, <<"-list|&|types">>, uri_encode(Type)));
+get_relationship_by_type(_, _, _, _) ->
+  {error, invalid_relationship_direction_or_type}.
+
 %%_* Helpers ===================================================================
 
 -spec start_app(atom()) -> [atom()].
@@ -464,6 +578,10 @@ id_to_binary(_) ->
 -spec replace_param(binary(), binary(), binary()) -> binary().
 replace_param(URI, Param, Value) ->
   binary:replace(URI, <<"{", Param/binary, "}">>, Value).
+
+-spec uri_encode(binary()) -> binary().
+uri_encode(Data) ->
+  list_to_binary(http_uri:encode(binary_to_list(Data))).
 
 headers() ->
   [ {<<"Accept">>, <<"application/json; charset=UTF-8">>}
