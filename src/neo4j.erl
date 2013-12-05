@@ -153,21 +153,7 @@ cypher(Neo, Query) ->
 cypher(Neo, Query, Params) ->
   {_, URI} = lists:keyfind(<<"cypher">>, 1, Neo),
   Payload = jsonx:encode([{query, Query}, {params, Params}]),
-  case hackney:request(post, URI, [], Payload) of
-    {error, Reason} -> {error, Reason};
-    {ok, StatusCode, _, Client} when StatusCode /= 200 ->
-      {ok, Body, _} = hackney:body(Client),
-      Reason = jsonx:decode(Body, [{format, proplist}]),
-      {error, Reason};
-    {ok, _, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
-      Decoder = jsonx:decoder( [ {cypher_result, record_info(fields, cypher_result)}
-                               , {neo4j_node, record_info(fields, neo4j_node)}
-                               , {neo4j_relationship, record_info(fields, neo4j_relationship)}
-                               ]
-                             , [{format, proplist}]),
-      Decoder(Body)
-  end.
+  create(Neo, URI, Payload).
 
 %%_* Nodes ---------------------------------------------------------------------
 
@@ -587,9 +573,12 @@ create(Neo, URI, Payload) ->
   io:format("[POST] ~p ~p~n", [URI, Payload]),
   case hackney:request(post, URI, headers(), Payload) of
     {error, Reason} -> {error, Reason};
+    {ok, 200, _, Client} ->
+      {ok, Body, _} = hackney:body(Client),
+      {_, Decoder} = lists:keyfind(<<"decoder">>, 1, Neo),
+      Decoder(Body);
     {ok, 201, _, Client} ->
       {ok, Body, _} = hackney:body(Client),
-      io:format("~p~n", [Body]),
       {_, Decoder} = lists:keyfind(<<"decoder">>, 1, Neo),
       Decoder(Body);
     {ok, _, _, Client} ->
