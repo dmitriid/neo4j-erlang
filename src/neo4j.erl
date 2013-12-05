@@ -21,6 +21,8 @@
         , set_node_properties/3
         , get_node_property/3
         , set_node_property/4
+        , delete_node_properties/2
+        , delete_node_property/3
         , get_relationships/3
         , get_typed_relationships/3
         , get_typed_relationships/4
@@ -32,6 +34,9 @@
         , set_relationship_properties/3
         , get_relationship_property/3
         , set_relationship_property/4
+        , delete_relationship_properties/2
+        , delete_relationship_property/3
+        , get_relationship_types/1
         ]).
 
 %%_* Defines ===================================================================
@@ -235,6 +240,35 @@ set_node_property(Neo, Node, Prop, Val) when is_binary(Prop) ->
 set_node_property(_, _, _, _) ->
   {error, invalid_property}.
 
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-delete-all-properties-from-node
+%%
+-spec delete_node_properties( neo4j_root()
+                       , neo4j_node() | neo4j_id()
+                       ) -> ok | {error, term()}.
+delete_node_properties(Neo, Node) ->
+  case get_node(Neo, Node) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_node{properties = URI} ->
+      delete(Neo, URI)
+  end.
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-delete-a-named-property-from-a-node
+%%
+-spec delete_node_property( neo4j_root()
+                          , neo4j_node() | neo4j_id()
+                          , binary()
+                          ) -> ok | {error, term()}.
+delete_node_property(Neo, Node, Prop) when is_binary(Prop) ->
+  case get_node(Neo, Node) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_node{properties = URI} ->
+      delete(Neo, <<URI/binary, "/", Prop/binary>>)
+  end;
+delete_node_property(_, _, _) ->
+  {error, invalid_property}.
 
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-all-relationships
@@ -406,6 +440,44 @@ set_relationship_property(Neo, Relationship, Prop, Val) when is_binary(Prop) ->
 set_relationship_property(_, _, _, _) ->
   {error, invalid_property}.
 
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationship-properties.html#rest-api-remove-properties-from-a-relationship
+%%
+-spec delete_relationship_properties( neo4j_root()
+                                    , neo4j_relationship() | neo4j_id()
+                                    ) -> ok | {error, term()}.
+delete_relationship_properties(Neo, Relationship) ->
+  case get_relationship(Neo, Relationship) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_relationship{properties = URI} ->
+      delete(Neo, URI)
+  end.
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationship-properties.html#rest-api-remove-property-from-a-relationship
+%%
+-spec delete_relationship_property( neo4j_root()
+                                  , neo4j_relationship() | neo4j_id()
+                                  , binary()
+                                  ) -> ok | {error, term()}.
+delete_relationship_property(Neo, Relationship, Prop) when is_binary(Prop) ->
+  case get_relationship(Neo, Relationship) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_relationship{properties = URI} ->
+      delete(Neo, <<URI/binary, "/", Prop/binary>>)
+  end;
+delete_relationship_property(_, _, _) ->
+  {error, invalid_property}.
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationship-types.html
+%%
+-spec get_relationship_types(neo4j_root()) -> [binary()] | {error, term()}.
+get_relationship_types(Neo) ->
+  {_, URI} = lists:keyfind(<<"relationship_types">>, 1, Neo),
+  retrieve(Neo, URI).
+
 %%_* Internal ==================================================================
 
 %%
@@ -466,7 +538,13 @@ create(Neo, URI, Payload) ->
       {error, jsonx:decode(Body, [{format, proplist}])}
   end.
 
--spec retrieve(neo4j_root(), binary()) -> neo4j_node() | neo4j_relationship() | {error, term()}.
+-spec retrieve(neo4j_root(), binary()) -> neo4j_node()
+                                        | neo4j_relationship()
+                                        | [neo4j_node() | neo4j_relationship()]
+                                        | binary()
+                                        | [binary()]
+                                        | [term()]
+                                        | {error, term()}.
 retrieve(Neo, URI) ->
   io:format("[GET] ~p~n", [URI]),
   case hackney:request(get, URI, headers()) of
@@ -477,6 +555,8 @@ retrieve(Neo, URI) ->
       {ok, Body, _} = hackney:body(Client),
       {_, Decoder} = lists:keyfind(<<"decoder">>, 1, Neo),
       Decoder(Body);
+    {ok, 204, _, _} ->
+      <<>>;
     {ok, _, _, Client} ->
       {ok, Body, _} = hackney:body(Client),
       {error, jsonx:decode(Body, [{format, proplist}])}
