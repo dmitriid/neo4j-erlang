@@ -10,9 +10,14 @@
 
 
 %%_* Exports ===================================================================
--export([ connect/1
+-export([
+        %% General
+          connect/1
+        , get_relationship_types/1
+        %% Cypher
         , cypher/2
         , cypher/3
+        %% Nodes
         , create_node/1
         , create_node/2
         , get_node/2
@@ -26,6 +31,7 @@
         , get_relationships/3
         , get_typed_relationships/3
         , get_typed_relationships/4
+        %% Relationships
         , get_relationship/2
         , create_relationship/4
         , create_relationship/5
@@ -36,7 +42,10 @@
         , set_relationship_property/4
         , delete_relationship_properties/2
         , delete_relationship_property/3
-        , get_relationship_types/1
+        %% Indices
+        %  Node indices
+        , create_node_index/2
+        , create_node_index/3
         ]).
 
 %%_* Defines ===================================================================
@@ -84,6 +93,12 @@
                             }
       ).
 
+-record(neo4j_index, { template
+                     , type
+                     , provider
+                     }
+       ).
+
 -record(cypher_result, { columns :: list()
                        , data    :: [[neo4j_node() | neo4j_relationship() | binary()]]
                        }).
@@ -93,9 +108,14 @@
 -type neo4j_relationship() :: #neo4j_relationship{}.
 -type cypher_result() :: #cypher_result{}.
 -type neo4j_id() :: integer() | string() | binary().
+-type neo4j_index() :: #neo4j_index{}.
+
+-type neo4j_type() :: neo4j_index() | neo4j_node() | neo4j_relationship() | cypher_result().
 
 
 %%_* API =======================================================================
+
+%%_* General -------------------------------------------------------------------
 
 -spec connect(proplists:proplist()) -> neo4j_root() | {error, base_uri_not_specified}.
 connect([]) ->
@@ -106,6 +126,18 @@ connect(Options) ->
     {_, BaseURI} -> get_root(BaseURI);
     _            -> {error, base_uri_not_specified}
   end.
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationship-types.html
+%%
+-spec get_relationship_types(neo4j_root()) -> [binary()] | {error, term()}.
+get_relationship_types(Neo) ->
+  {_, URI} = lists:keyfind(<<"relationship_types">>, 1, Neo),
+  retrieve(Neo, URI).
+
+
+%%_* Cypher --------------------------------------------------------------------
 
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-cypher.html#rest-api-send-a-query
@@ -136,6 +168,8 @@ cypher(Neo, Query, Params) ->
                              , [{format, proplist}]),
       Decoder(Body)
   end.
+
+%%_* Nodes ---------------------------------------------------------------------
 
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-nodes.html#rest-api-create-node
@@ -311,6 +345,8 @@ get_typed_relationships(Neo, Node0, Type, Direction) ->
   end.
 
 
+%%_* Relationships--------------------------------------------------------------
+
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-typed-relationships
 %%
@@ -469,14 +505,36 @@ delete_relationship_property(Neo, Relationship, Prop) when is_binary(Prop) ->
 delete_relationship_property(_, _, _) ->
   {error, invalid_property}.
 
+%%_* Indices -------------------------------------------------------------------
+
+%%_* Node indices ..............................................................
 
 %%
-%% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationship-types.html
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-create-node-index
 %%
--spec get_relationship_types(neo4j_root()) -> [binary()] | {error, term()}.
-get_relationship_types(Neo) ->
-  {_, URI} = lists:keyfind(<<"relationship_types">>, 1, Neo),
-  retrieve(Neo, URI).
+-spec create_node_index(neo4j_root(), binary()) -> neo4j_index() | {error, term()}.
+create_node_index(Neo, Name) when is_binary(Name) ->
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  Payload = jsonx:encode([{<<"name">>, Name}]),
+  create_index(Neo, URI, Payload);
+create_node_index(_, _) ->
+  {error, invalid_index_name}.
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-create-node-index
+%%
+-spec create_node_index(neo4j_root(), binary(), proplists:proplist()) -> neo4j_index() | {error, term()}.
+create_node_index(Neo, Name, Config) when is_binary(Name) ->
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  Payload = jsonx:encode([ {<<"name">>, Name}
+                         , {<<"config">>, Config}
+                         ]
+                        ),
+  create_index(Neo, URI, Payload);
+create_node_index(_, _, _) ->
+  {error, invalid_index_name}.
+
+%%_* Relationship indices ......................................................
 
 %%_* Internal ==================================================================
 
@@ -499,6 +557,7 @@ get_root(BaseURI) when is_binary(BaseURI) ->
           Decoder = jsonx:decoder( [ {cypher_result, record_info(fields, cypher_result)}
                                    , {neo4j_node, record_info(fields, neo4j_node)}
                                    , {neo4j_relationship, record_info(fields, neo4j_relationship)}
+                                   , {neo4j_index, record_info(fields, neo4j_index)}
                                    ]
                                  , [{format, proplist}]),
           [ {<<"base_uri">>, BaseURI}
@@ -509,7 +568,7 @@ get_root(BaseURI) when is_binary(BaseURI) ->
       end
   end.
 
--spec create(neo4j_root(), binary()) -> neo4j_node() | neo4j_relationship() | {error, term()}.
+-spec create(neo4j_root(), binary()) -> neo4j_type() | binary() | [term()] | {error, term()}.
 create(Neo, URI) ->
   io:format("[POST] ~p~n", [URI]),
   case hackney:request(post, URI, headers()) of
@@ -523,7 +582,7 @@ create(Neo, URI) ->
       {error, jsonx:decode(Body, [{format, proplist}])}
   end.
 
--spec create(neo4j_root(), binary(), binary()) -> neo4j_node() | neo4j_relationship() | {error, term()}.
+-spec create(neo4j_root(), binary(), binary()) -> neo4j_type() | binary() | [term()] | {error, term()}.
 create(Neo, URI, Payload) ->
   io:format("[POST] ~p ~p~n", [URI, Payload]),
   case hackney:request(post, URI, headers(), Payload) of
@@ -620,6 +679,15 @@ get_relationship_by_type(Neo, #neo4j_node{outgoing_typed_relationships = URI}, T
   retrieve(Neo, replace_param(URI, <<"-list|&|types">>, uri_encode(Type)));
 get_relationship_by_type(_, _, _, _) ->
   {error, invalid_relationship_direction_or_type}.
+
+-spec create_index(neo4j_root(), binary(), binary()) -> neo4j_index() | {error, term()}.
+create_index(Neo, URI, Payload) ->
+  case create(Neo, URI, Payload) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_index{} = I -> I;
+    [{<<"template">>, TemplateURI}|_]  ->
+      #neo4j_index{template = TemplateURI}
+  end.
 
 %%_* Helpers ===================================================================
 
