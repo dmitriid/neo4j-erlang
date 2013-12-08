@@ -46,6 +46,9 @@
         %  Node indices
         , create_node_index/2
         , create_node_index/3
+        , delete_node_index/2
+        , node_indices/1
+        , add_node_to_index/5
         ]).
 
 %%_* Defines ===================================================================
@@ -182,12 +185,18 @@ create_node(Neo, Props) ->
               ) -> neo4j_node() | {error, term()}.
 get_node(_Neo, #neo4j_node{} = Node) ->
   Node;
+get_node(Neo, Id) when is_binary(Id) ->
+  case is_uri(Id) of
+    true  ->
+      retrieve(Neo, Id);
+    false ->
+      {_, URI} = lists:keyfind(<<"node">>, 1, Neo),
+      retrieve(Neo, <<URI/binary, "/", Id/binary>>)
+  end;
 get_node(Neo, Id0) ->
   case id_to_binary(Id0) of
     {error, Reason} -> {error, Reason};
-    Id ->
-      {_, URI} = lists:keyfind(<<"node">>, 1, Neo),
-      retrieve(Neo, <<URI/binary, "/", Id/binary>>)
+    Id              -> get_node(Neo, Id)
   end.
 
 %%
@@ -339,12 +348,17 @@ get_typed_relationships(Neo, Node0, Type, Direction) ->
 -spec get_relationship(neo4j_root(), neo4j_id() | neo4j_relationship()) -> neo4j_relationship() | {error, term()}.
 get_relationship(_Neo, #neo4j_relationship{} = Relationship) ->
   Relationship;
+get_relationship(Neo, Id) when is_binary(Id) ->
+  case is_uri(Id) of
+    true -> retrieve(Neo, Id);
+    false ->
+      {_, URI} = lists:keyfind(<<"relationship">>, 1, Neo),
+      retrieve(Neo, <<URI/binary, "/", Id/binary>>)
+  end;
 get_relationship(Neo, Id0) ->
   case id_to_binary(Id0) of
     {error, Reason} -> {error, Reason};
-    Id ->
-      {_, URI} = lists:keyfind(<<"relationship">>, 1, Neo),
-      retrieve(Neo, <<URI/binary, "/", Id/binary>>)
+    Id              -> get_relationship(Neo, Id)
   end.
 
 %%
@@ -520,6 +534,48 @@ create_node_index(Neo, Name, Config) when is_binary(Name) ->
 create_node_index(_, _, _) ->
   {error, invalid_index_name}.
 
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-delete-node-index
+%%
+-spec delete_node_index(neo4j_root(), binary()) -> ok | {error, term()}.
+delete_node_index(Neo, Name) when is_binary(Name) ->
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  delete(Neo, <<URI/binary, "/", Name/binary>>);
+delete_node_index(_, _) ->
+  {error, invalid_index_name}.
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-list-node-indexes
+%%
+-spec node_indices(neo4j_root()) -> [{binary(), neo4j_index()}] | {error, term()}.
+node_indices(Neo) ->
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  list(retrieve(Neo, URI)).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-add-node-to-index
+%%
+-spec add_node_to_index( neo4j_root()
+                       , neo4j_node() | neo4j_id()
+                       , Index::binary()
+                       , Key::binary
+                       , Value::binary
+                       ) -> term() | {error, term()}.
+add_node_to_index(Neo, Id, Index, Key, Value) when is_binary(Index) ->
+  case get_node(Neo, Id) of
+    {error, Reason} -> {error, Reason};
+    #neo4j_node{self = NodeURI} ->
+      Payload = jsonx:encode([ {<<"uri">>, NodeURI}
+                             , {<<"key">>, Key}
+                             , {<<"value">>, Value}
+                             ]
+                            ),
+      {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+      create(Neo, <<URI/binary, "/", Index/binary>>, Payload)
+  end;
+add_node_to_index(_, _, _, _, _) ->
+  {error, invalid_index_name}.
+
 %%_* Relationship indices ......................................................
 
 %%_* Internal ==================================================================
@@ -563,9 +619,8 @@ create(Neo, URI) ->
       {ok, Body, _} = hackney:body(Client),
       {_, Decoder} = lists:keyfind(<<"decoder">>, 1, Neo),
       Decoder(Body);
-    {ok, _, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
-      {error, jsonx:decode(Body, [{format, proplist}])}
+    {ok, Status, _, Client} ->
+      process_response(URI, Status, Client)
   end.
 
 -spec create(neo4j_root(), binary(), binary()) -> neo4j_type() | binary() | [term()] | {error, term()}.
@@ -581,9 +636,8 @@ create(Neo, URI, Payload) ->
       {ok, Body, _} = hackney:body(Client),
       {_, Decoder} = lists:keyfind(<<"decoder">>, 1, Neo),
       Decoder(Body);
-    {ok, _, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
-      {error, jsonx:decode(Body, [{format, proplist}])}
+    {ok, Status, _, Client} ->
+      process_response(URI, Status, Client)
   end.
 
 -spec retrieve(neo4j_root(), binary()) -> neo4j_node()
@@ -605,9 +659,8 @@ retrieve(Neo, URI) ->
       Decoder(Body);
     {ok, 204, _, _} ->
       <<>>;
-    {ok, _, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
-      {error, jsonx:decode(Body, [{format, proplist}])}
+    {ok, Status, _, Client} ->
+      process_response(URI, Status, Client)
   end.
 
 -spec update(neo4j_root(), binary(), binary()) -> ok | {error, term()}.
@@ -617,11 +670,8 @@ update(_Neo, URI, Payload) ->
     {error, Reason} -> {error, Reason};
     {ok, 204, _, _} ->
       ok;
-    {ok, Stat, _, Client} ->
-      io:format("~p~n~n", [Stat]),
-      {ok, Body, _} = hackney:body(Client),
-      io:format("~p~n~n", [Body]),
-      {error, jsonx:decode(Body, [{format, proplist}])}
+    {ok, Status, _, Client} ->
+      process_response(URI, Status, Client)
   end.
 
 -spec delete(neo4j_root(), binary()) -> ok | {error, term()}.
@@ -629,13 +679,10 @@ delete(_Neo, URI) ->
   io:format("[DELETE] ~p~n", [URI]),
   case hackney:request(delete, URI) of
     {error, Reason} -> {error, Reason};
-    {ok, 404, _, _} ->
-      ok;
     {ok, 204, _, _} ->
       ok;
-    {ok, _, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
-      {error, jsonx:decode(Body, [{format, proplist}])}
+    {ok, Status, _, Client} ->
+      process_response(URI, Status, Client)
   end.
 
 %%
@@ -720,6 +767,24 @@ replace_param(URI, Param, Value) ->
 uri_encode(Data) ->
   list_to_binary(http_uri:encode(binary_to_list(Data))).
 
+-spec is_uri(binary()) -> boolean().
+is_uri(<<$h, $t, $t, $p, _/binary>>) -> true;
+is_uri(_)                            -> false.
+
+-spec process_response(integer(), binary(), hackney:client()) -> {error, term()}.
+process_response(URI, 404, _Client) ->
+  {error, {not_found, URI}};
+process_response(URI, 405, _Client) ->
+  {error, {method_not_allowed, URI}};
+process_response(URI, Status, Client) ->
+  {ok, Body, _} = hackney:body(Client),
+  {error, {Status, URI, jsonx:decode(Body, [{format, proplist}])}}.
+
+-spec list(list() | binary()) -> list().
+list(L) when is_list(L)   -> L;
+list(B) when is_binary(B) -> binary_to_list(B).
+
+-spec headers() -> proplists:proplist().
 headers() ->
   [ {<<"Accept">>, <<"application/json; charset=UTF-8">>}
   , {<<"Content-Type">>, <<"application/json">>}
