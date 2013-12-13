@@ -17,6 +17,7 @@
         , get_relationship_types/1
         , get_nodes_by_label/2
         , get_nodes_by_label/3
+        , get_labels/1
         %% Transactions
         , transaction_begin/2
         , transaction_execute/2
@@ -165,6 +166,14 @@ get_relationship_types(Neo) ->
 get_nodes_by_label(Neo, Label) ->
   {_, URI} = lists:keyfind(<<"label">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary, "/nodes">>).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-list-all-labels
+%%
+-spec get_labels(neo4j_root()) -> [binary()] | {error, term()}.
+get_labels(Neo) ->
+  {_, URI} = lists:keyfind(<<"labels">>, 1, Neo),
+  retrieve(URI).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-get-nodes-by-label-and-property
@@ -690,6 +699,7 @@ get_root(BaseURI) when is_binary(BaseURI) ->
           [ {<<"base_uri">>, BaseURI}
           , {<<"relationship">>, <<BaseURI/binary, "relationship">>}
           , {<<"label">>, <<BaseURI/binary, "label">>}
+          , {<<"labels">>, <<BaseURI/binary, "labels">>}
             | Root
           ]
       end
