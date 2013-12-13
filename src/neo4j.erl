@@ -806,13 +806,13 @@ get_relationship_by_type(Node, Type) ->
                               ) -> [neo4j_relationship()] | {error, term()}.
 get_relationship_by_type(Node, Type, all) ->
   {_, URI} = lists:keyfind(<<"all_typed_relationships">>, 1, Node),
-  retrieve(replace_param(URI, <<"-list|&|types">>, uri_encode(Type)));
+  retrieve(replace_param(URI, <<"-list|&|types">>, Type));
 get_relationship_by_type(Node, Type, in) ->
   {_, URI} = lists:keyfind(<<"incoming_typed_relationships">>, 1, Node),
-  retrieve(replace_param(URI, <<"-list|&|types">>, uri_encode(Type)));
+  retrieve(replace_param(URI, <<"-list|&|types">>, Type));
 get_relationship_by_type(Node, Type, out) ->
   {_, URI} = lists:keyfind(<<"outgoing_typed_relationships">>, 1, Node),
-  retrieve(replace_param(URI, <<"-list|&|types">>, uri_encode(Type)));
+  retrieve(replace_param(URI, <<"-list|&|types">>, Type));
 get_relationship_by_type(_, _, _) ->
   {error, invalid_relationship_direction_or_type}.
 
@@ -908,10 +908,6 @@ id_to_binary(_) ->
 -spec replace_param(binary(), binary(), binary()) -> binary().
 replace_param(URI, Param, Value) ->
   binary:replace(URI, <<"{", Param/binary, "}">>, Value).
-
--spec uri_encode(binary()) -> binary().
-uri_encode(Data) ->
-  list_to_binary(http_uri:encode(binary_to_list(Data))).
 
 -spec is_uri(binary()) -> boolean().
 is_uri(<<$h, $t, $t, $p, _/binary>>) -> true;
