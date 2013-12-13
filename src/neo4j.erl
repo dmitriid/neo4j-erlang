@@ -15,6 +15,8 @@
         %% General
           connect/1
         , get_relationship_types/1
+        , get_nodes_by_label/2
+        , get_nodes_by_label/3
         %% Transactions
         , transaction_begin/2
         , transaction_execute/2
@@ -155,6 +157,23 @@ connect(Options) ->
 get_relationship_types(Neo) ->
   {_, URI} = lists:keyfind(<<"relationship_types">>, 1, Neo),
   retrieve(URI).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-get-all-nodes-with-a-label
+%%
+-spec get_nodes_by_label(neo4j_root(), binary()) -> [neo4j_node()] | {error, term()}.
+get_nodes_by_label(Neo, Label) ->
+  {_, URI} = lists:keyfind(<<"label">>, 1, Neo),
+  retrieve(<<URI/binary, "/", Label/binary, "/nodes">>).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-get-nodes-by-label-and-property
+%%
+-spec get_nodes_by_label(neo4j_root(), binary(), proplists:proplist()) -> [neo4j_node()] | {error, term()}.
+get_nodes_by_label(Neo, Label, Properties) ->
+  {_, URI} = lists:keyfind(<<"label">>, 1, Neo),
+  Props = encode_query_string(Properties),
+  retrieve(<<URI/binary, "/", Label/binary, "/nodes", "?", Props/binary>>).
 
 %%_* Transactions --------------------------------------------------------------
 
@@ -670,6 +689,7 @@ get_root(BaseURI) when is_binary(BaseURI) ->
         Root          ->
           [ {<<"base_uri">>, BaseURI}
           , {<<"relationship">>, <<BaseURI/binary, "relationship">>}
+          , {<<"label">>, <<BaseURI/binary, "label">>}
             | Root
           ]
       end
@@ -894,11 +914,24 @@ process_response(URI, 405, _Client) ->
   {error, {method_not_allowed, URI}};
 process_response(URI, Status, Client) ->
   {ok, Body, _} = hackney:body(Client),
-  {error, {Status, URI, jsonx:decode(Body, [{format, proplist}])}}.
+  case Body of
+    <<>> -> {error, {Status, URI, <<>>}};
+    _ -> {error, {Status, URI, jsonx:decode(Body, [{format, proplist}])}}
+  end.
 
 -spec list(list() | binary()) -> list().
 list(L) when is_list(L)   -> L;
 list(B) when is_binary(B) -> binary_to_list(B).
+
+-spec encode_query_string(proplists:proplist()) -> binary().
+encode_query_string(Props) ->
+  List = [<<Key/binary, "=", Value/binary>> || {Key, Value} <- Props],
+  Join = fun(B, <<>>) ->
+              B;
+            (B, Acc) ->
+              <<Acc/binary, "&", B/binary>>
+         end,
+  lists:foldl(Join, <<>>, List).
 
 -spec headers() -> proplists:proplist().
 headers() ->
