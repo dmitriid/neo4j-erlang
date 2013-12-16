@@ -58,6 +58,9 @@
         , delete_relationship_properties/1
         , delete_relationship_property/2
         %% Indices
+        , create_index/3
+        , list_indexes/2
+        , drop_index/3
         %  Node indices
         , create_node_index/2
         , create_node_index/3
@@ -599,12 +602,37 @@ delete_relationship_properties(Relationship) ->
                                   , binary()
                                   ) -> ok | {error, term()}.
 delete_relationship_property(Relationship, Prop) when is_binary(Prop) ->
-      {_, URI} = lists:keyfind(<<"properties">>, 1, Relationship),
-      delete(<<URI/binary, "/", Prop/binary>>);
+  {_, URI} = lists:keyfind(<<"properties">>, 1, Relationship),
+  delete(<<URI/binary, "/", Prop/binary>>);
 delete_relationship_property(_, _) ->
   {error, invalid_property}.
 
 %%_* Indices -------------------------------------------------------------------
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-indexes.html#rest-api-create-index
+%%
+-spec create_index(neo4j_root(), binary(), [binary()]) -> propliststs:proplist() | {error, term()}.
+create_index(Neo, Name, Keys) ->
+  {_, URI} = lists:keyfind(<<"index">>, 1, Neo),
+  Payload = jsonx:encode([{<<"property_keys">>, Keys}]),
+  create(<<URI/binary, "/", Name/binary>>, Payload).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-indexes.html#rest-api-drop-index
+%%
+-spec drop_index(neo4j_root(), binary(), binary()) -> propliststs:proplist() | {error, term()}.
+drop_index(Neo, Name, Key) ->
+  {_, URI} = lists:keyfind(<<"index">>, 1, Neo),
+  delete(<<URI/binary, "/", Name/binary, "/", Key/binary>>).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-indexes.html#rest-api-list-indexes-for-a-label
+%%
+-spec list_indexes(neo4j_root(), binary()) -> propliststs:proplist() | {error, term()}.
+list_indexes(Neo, Name) ->
+  {_, URI} = lists:keyfind(<<"index">>, 1, Neo),
+  retrieve(<<URI/binary, "/", Name/binary>>).
 
 %%_* Node indices ..............................................................
 
@@ -700,6 +728,7 @@ get_root(BaseURI) when is_binary(BaseURI) ->
           , {<<"relationship">>, <<BaseURI/binary, "relationship">>}
           , {<<"label">>, <<BaseURI/binary, "label">>}
           , {<<"labels">>, <<BaseURI/binary, "labels">>}
+          , {<<"index">>, <<BaseURI/binary, "schema/index">>}
             | Root
           ]
       end
