@@ -68,6 +68,9 @@
         , get_label_constraints/2
         , get_constraints/1
         , drop_constraint/3
+        %% Traverse
+        , traverse/2
+        , traverse/3
         %% Legacy node indices
         , create_node_index/2
         , create_node_index/3
@@ -697,6 +700,34 @@ drop_constraint(Neo, Label, PropKey) ->
   delete(<<URI/binary, "/", Label/binary, "/uniqueness/", PropKey/binary>>).
 
 
+%%_* Traverse ------------------------------------------------------------------
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-traverse.html
+%%
+%%      Note: you'll have to construct your request body manually, e.g:
+%%
+%%      Neo = neo4j:connect([{base_uri, BaseUri}]),
+%%      Body = [ {<<"order">>, <<"breadth_first">>}
+%%             , {<<"uniqueness">>, <<"none">>}
+%%             , {<<"return_filter">>, [ {<<"language">>, <<"builtin">>}
+%%                                     , {<<"name">>, <<"all">>}
+%%                                     ]
+%%               }
+%%             ],
+%%      neo4j:traverse(Neo, Body)
+%%         or
+%%      neo4j:traverse(Neo, Body, ReturnType) %% where ReturnType is a binary
+-spec traverse(neo4j_node(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
+traverse(Node, Request) ->
+  traverse(Node, Request, <<"node">>).
+
+-spec traverse(neo4j_node(), proplists:proplist(), binary()) -> proplists:proplist() | {error, term()}.
+traverse(Node, Request, ReturnType) ->
+  {_, URI} = lists:keyfind(<<"traverse">>, 1, Node),
+  Payload = jsonx:encode(Request),
+  create(replace_param(URI, <<"returnType">>, ReturnType), Payload).
+%%
 %%_* Legacy node indices -------------------------------------------------------
 
 %%
