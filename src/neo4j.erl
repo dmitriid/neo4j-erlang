@@ -93,8 +93,21 @@
         , remove_from_node_index/5
         , find_node_exact/4
         , find_node_query/3
+        %% Legacy relationship indices
+        , create_relationship_index/2
+        , create_relationship_index/3
+        , delete_relationship_index/2
+        , relationship_indices/1
+        , add_relationship_to_index/5
+        , add_relationship_to_index/6
+        , remove_from_relationship_index/3
+        , remove_from_relationship_index/4
+        , remove_from_relationship_index/5
+        , find_relationship_exact/4
+        , find_relationship_query/3
         %% Uniqueness
         , unique_create_node/6
+        , unique_create_relationship/8
         ]).
 
 %%_* Defines ===================================================================
@@ -892,9 +905,6 @@ create_node_index(Neo, Name) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-create-node-index
 %%
-%%      Note: Besides config specified in the doc, you can also pass an
-%%      additional value: <<"uniqiueness">>.
-%%
 -spec create_node_index(neo4j_root(), binary(), proplists:proplist()) -> neo4j_index() | {error, term()}.
 create_node_index(Neo, Name, Config) ->
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
@@ -1006,6 +1016,127 @@ find_node_query(Neo, Index, Query) ->
 
 %%_* Legacy relationship indices ------------------------------------------------------
 
+%%
+%% @doc
+%%
+-spec create_relationship_index(neo4j_root(), binary()) -> neo4j_index() | {error, term()}.
+create_relationship_index(Neo, Name) ->
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  Payload = jsonx:encode([{<<"name">>, Name}]),
+  create(URI, Payload).
+
+%%
+%% @doc
+%%
+-spec create_relationship_index(neo4j_root(), binary(), proplists:proplist()) -> neo4j_index() | {error, term()}.
+create_relationship_index(Neo, Name, Config) ->
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  Payload = jsonx:encode([ {<<"name">>, Name}
+                         , {<<"config">>, Config}
+                         ]
+                        ),
+  create(URI, Payload).
+
+%%
+%% @doc
+%%
+-spec delete_relationship_index(neo4j_root(), binary()) -> ok | {error, term()}.
+delete_relationship_index(Neo, Name) ->
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  delete(<<URI/binary, "/", Name/binary>>).
+
+%%
+%% @doc
+%%
+-spec relationship_indices(neo4j_root()) -> [{binary(), neo4j_index()}] | {error, term()}.
+relationship_indices(Neo) ->
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  list(retrieve(URI)).
+
+%%
+%% @doc
+%%
+-spec add_relationship_to_index( neo4j_root()
+                               , neo4j_relationship()
+                               , Index::binary()
+                               , Key::binary
+                               , Value::binary
+                               ) -> term() | {error, term()}.
+add_relationship_to_index(Neo, Relationship, Index, Key, Value) ->
+  {_, NodeURI} = lists:keyfind(<<"self">>, 1, Relationship),
+  Payload = jsonx:encode([ {<<"uri">>, NodeURI}
+                         , {<<"key">>, Key}
+                         , {<<"value">>, Value}
+                         ]
+                        ),
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  create(<<URI/binary, "/", Index/binary>>, Payload).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-add-an-existing-relationship-to-a-unique-index-not-indexed
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-add-an-existing-relationship-to-a-unique-index-already-indexed
+%%
+-spec add_relationship_to_index( neo4j_root()
+                               , neo4j_relationship()
+                               , Index::binary()
+                               , Key::binary
+                               , Value::binary
+                               , Uniqueness::binary()
+                               ) -> term() | {error, term()}.
+add_relationship_to_index(Neo, Relationship, Index, Key, Value, Uniqieness) ->
+  {_, NodeURI} = lists:keyfind(<<"self">>, 1, Relationship),
+  Payload = jsonx:encode([ {<<"uri">>, NodeURI}
+                         , {<<"key">>, Key}
+                         , {<<"value">>, Value}
+                         ]
+                        ),
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqieness/binary>>, Payload).
+
+
+%%
+%% @doc
+%%
+-spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary()) -> term() | {error, term()}.
+remove_from_relationship_index(Neo, Relationship, Index) ->
+  Id = id(Relationship),
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  delete(<<URI/binary, "/", Index/binary, "/", Id/binary>>).
+
+%%
+%% @doc
+%%
+-spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary(), binary()) -> term() | {error, term()}.
+remove_from_relationship_index(Neo, Relationship, Index, Key) ->
+  Id = id(Relationship),
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Id/binary>>).
+
+%%
+%% @doc
+%%
+-spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary(), binary(), binary()) -> term() | {error, term()}.
+remove_from_relationship_index(Neo, Relationship, Index, Key, Value) ->
+  Id = id(Relationship),
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary, "/", Id/binary>>).
+
+%%
+%% @doc
+%%
+-spec find_relationship_exact(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
+find_relationship_exact(Neo, Index, Key, Value) ->
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  retrieve(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary>>).
+
+%%
+%% @doc
+%%
+-spec find_relationship_query(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
+find_relationship_query(Neo, Index, Query) ->
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>).
+
 %%_* Uniqueness ----------------------------------------------------------------
 
 %%
@@ -1026,6 +1157,33 @@ unique_create_node(Neo, Props, Index, Key, Value, Uniqueness) ->
   Payload = jsonx:encode([ {<<"key">>, Key}
                          , {<<"value">>, Value}
                          , {<<"properties">>, Props}
+                         ]),
+  create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqueness/binary>>, Payload).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-get-or-create-unique-relationship-create
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-get-or-create-unique-relationship-existing
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-create-a-unique-relationship-or-return-fail-create
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-create-a-unique-relationship-or-return-fail-fail
+%%
+-spec unique_create_relationship( neo4j_root()
+                                , neo4j_node()
+                                , neo4j_node()
+                                , binary()
+                                , binary()
+                                , binary()
+                                , binary()
+                                , binary()
+                                ) -> neo4j_relationship() | {error, term()}.
+unique_create_relationship(Neo, StartNode, EndNode, Type, Index, Key, Value, Uniqueness) ->
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, StartUri} = lists:keyfind(<<"self">>, 1, StartNode),
+  {_, EndUri} = lists:keyfind(<<"self">>, 1, EndNode),
+  Payload = jsonx:encode([ {<<"key">>, Key}
+                         , {<<"value">>, Value}
+                         , {<<"type">>, Type}
+                         , {<<"start">>, StartUri}
+                         , {<<"end">>, EndUri}
                          ]),
   create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqueness/binary>>, Payload).
 
