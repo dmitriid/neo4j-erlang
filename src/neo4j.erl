@@ -105,9 +105,26 @@
         , remove_from_relationship_index/5
         , find_relationship_exact/4
         , find_relationship_query/3
-        %% Uniqueness
+        %% Uniqueness (legacy)
         , unique_create_node/6
         , unique_create_relationship/8
+        %% Legacy automatic indices
+        , find_node_auto_exact/3
+        , find_node_auto_query/2
+        , find_relationship_auto_exact/3
+        , find_relationship_auto_query/2
+        , create_node_auto_index/2
+        , create_relationship_auto_index/2
+        , get_node_auto_index_status/1
+        , get_relationship_auto_index_status/1
+        , set_node_auto_index_status/2
+        , set_relationship_auto_index_status/2
+        , get_node_auto_index_properties/1
+        , get_relationship_auto_index_properties/1
+        , add_node_auto_index_property/2
+        , add_relationship_auto_index_property/2
+        , remove_node_auto_index_property/2
+        , remove_relationship_auto_index_property/2
         ]).
 
 %%_* Defines ===================================================================
@@ -1137,7 +1154,7 @@ find_relationship_query(Neo, Index, Query) ->
   {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>).
 
-%%_* Uniqueness ----------------------------------------------------------------
+%%_* Uniqueness (legacy) -------------------------------------------------------
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-get-or-create-unique-node-create
@@ -1186,6 +1203,142 @@ unique_create_relationship(Neo, StartNode, EndNode, Type, Index, Key, Value, Uni
                          , {<<"end">>, EndUri}
                          ]),
   create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqueness/binary>>, Payload).
+
+%%_* Legacy auto indices -------------------------------------------------------
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-auto-indexes.html#rest-api-find-node-by-exact-match-from-an-automatic-index
+%%
+-spec find_node_auto_exact(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
+find_node_auto_exact(Neo, Key, Value) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "index/auto/node/", Key/binary, "/", Value/binary>>).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-auto-indexes.html#rest-api-find-node-by-query-from-an-automatic-index
+%%
+-spec find_node_auto_query(neo4j_root(), binary()) -> term() | {error, term()}.
+find_node_auto_query(Neo, Query) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "index/auto/node?query=", Query/binary>>).
+
+%%
+%% @doc
+%%
+-spec find_relationship_auto_exact(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
+find_relationship_auto_exact(Neo, Key, Value) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "index/auto/relationship/", Key/binary, "/", Value/binary>>).
+
+%%
+%% @doc
+%%
+-spec find_relationship_auto_query(neo4j_root(), binary()) -> term() | {error, term()}.
+find_relationship_auto_query(Neo, Query) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "index/auto/relationship?query=", Query/binary>>).
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-create-an-auto-index-for-nodes-with-specific-configuration
+%%
+-spec create_node_auto_index(neo4j_root(), proplists:proplist()) -> term() | {error, term()}.
+create_node_auto_index(Neo, Config) ->
+  create_node_index(Neo, <<"node_auto_index">>, Config).
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-create-an-auto-index-for-relationships-with-specific-configuration
+%%
+-spec create_relationship_auto_index(neo4j_root(), proplists:proplist()) -> term() | {error, term()}.
+create_relationship_auto_index(Neo, Config) ->
+  create_node_index(Neo, <<"relationship_auto_index">>, Config).
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-get-current-status-for-autoindexing-on-nodes
+%%
+-spec get_node_auto_index_status(neo4j_root()) -> boolean() | {error, term()}.
+get_node_auto_index_status(Neo) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "index/auto/node/status">>).
+
+%%
+%% @doc
+%%
+-spec get_relationship_auto_index_status(neo4j_root()) -> boolean() | {error, term()}.
+get_relationship_auto_index_status(Neo) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "index/auto/relationship/status">>).
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-enable-node-autoindexing
+%%
+-spec set_node_auto_index_status(neo4j_root(), boolean()) -> ok | {error, term()}.
+set_node_auto_index_status(Neo, Status) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  update(<<URI/binary, "index/auto/node/status">>, jsonx:encode(Status)).
+
+%%
+%% @doc
+%%
+-spec set_relationship_auto_index_status(neo4j_root(), boolean()) -> ok | {error, term()}.
+set_relationship_auto_index_status(Neo, Status) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  update(<<URI/binary, "index/auto/relationship/status">>, jsonx:encode(Status)).
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-lookup-list-of-properties-being-autoindexed
+%%
+-spec get_node_auto_index_properties(neo4j_root()) -> boolean() | {error, term()}.
+get_node_auto_index_properties(Neo) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "index/auto/node/properties">>).
+
+%%
+%% @doc
+%%
+-spec get_relationship_auto_index_properties(neo4j_root()) -> boolean() | {error, term()}.
+get_relationship_auto_index_properties(Neo) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "index/auto/relationship/properties">>).
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-add-a-property-for-autoindexing-on-nodes
+%%
+-spec add_node_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
+add_node_auto_index_property(Neo, Property) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  create(<<URI/binary, "index/auto/node/properties">>, jsonx:encode(Property)).
+
+%%
+%% @doc
+%%
+-spec add_relationship_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
+add_relationship_auto_index_property(Neo, Property) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  create(<<URI/binary, "index/auto/relationship/properties">>, jsonx:encode(Property)).
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-remove-a-property-for-autoindexing-on-nodes
+%%
+-spec remove_node_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
+remove_node_auto_index_property(Neo, Property) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  delete(<<URI/binary, "index/auto/node/properties/", Property/binary>>).
+
+%%
+%% @doc
+%%
+-spec remove_relationship_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
+remove_relationship_auto_index_property(Neo, Property) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  delete(<<URI/binary, "index/auto/relationship/properties/", Property/binary>>).
+
 
 %%_* Internal ==================================================================
 
