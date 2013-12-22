@@ -87,11 +87,14 @@
         , delete_node_index/2
         , node_indices/1
         , add_node_to_index/5
+        , add_node_to_index/6
         , remove_from_node_index/3
         , remove_from_node_index/4
         , remove_from_node_index/5
         , find_node_exact/4
         , find_node_query/3
+        %% Uniqueness
+        , unique_create_node/6
         ]).
 
 %%_* Defines ===================================================================
@@ -337,7 +340,7 @@ cypher(Neo, Query, Params) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-nodes.html#rest-api-create-node
 %%
--spec create_node(neo4j_root()) -> neo4j_node().
+-spec create_node(neo4j_root()) -> neo4j_node() | {error, term()}.
 create_node(Neo) ->
   {_, URI} = lists:keyfind(<<"node">>, 1, Neo),
   create(URI).
@@ -345,7 +348,7 @@ create_node(Neo) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-nodes.html#rest-api-create-node-with-properties
 %%
--spec create_node(neo4j_root(), proplists:proplist()) -> neo4j_node().
+-spec create_node(neo4j_root(), proplists:proplist()) -> neo4j_node() | {error, term()}.
 create_node(Neo, Props) ->
   {_, URI} = lists:keyfind(<<"node">>, 1, Neo),
   Payload = jsonx:encode(Props),
@@ -889,6 +892,9 @@ create_node_index(Neo, Name) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-create-node-index
 %%
+%%      Note: Besides config specified in the doc, you can also pass an
+%%      additional value: <<"uniqiueness">>.
+%%
 -spec create_node_index(neo4j_root(), binary(), proplists:proplist()) -> neo4j_index() | {error, term()}.
 create_node_index(Neo, Name, Config) ->
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
@@ -918,7 +924,7 @@ node_indices(Neo) ->
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-add-node-to-index
 %%
 -spec add_node_to_index( neo4j_root()
-                       , neo4j_node() | neo4j_id()
+                       , neo4j_node()
                        , Index::binary()
                        , Key::binary
                        , Value::binary
@@ -932,6 +938,27 @@ add_node_to_index(Neo, Node, Index, Key, Value) ->
                         ),
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
   create(<<URI/binary, "/", Index/binary>>, Payload).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-add-an-existing-node-to-unique-index-not-indexed
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-add-an-existing-node-to-unique-index-already-indexed
+%%
+-spec add_node_to_index( neo4j_root()
+                       , neo4j_node()
+                       , Index::binary()
+                       , Key::binary
+                       , Value::binary
+                       , Uniqueness::binary()
+                       ) -> term() | {error, term()}.
+add_node_to_index(Neo, Node, Index, Key, Value, Uniqieness) ->
+  {_, NodeURI} = lists:keyfind(<<"self">>, 1, Node),
+  Payload = jsonx:encode([ {<<"uri">>, NodeURI}
+                         , {<<"key">>, Key}
+                         , {<<"value">>, Value}
+                         ]
+                        ),
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqieness/binary>>, Payload).
 
 
 %%
@@ -978,6 +1005,29 @@ find_node_query(Neo, Index, Query) ->
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>).
 
 %%_* Legacy relationship indices ------------------------------------------------------
+
+%%_* Uniqueness ----------------------------------------------------------------
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-get-or-create-unique-node-create
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-get-or-create-unique-node-existing
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-create-a-unique-node-or-return-fail-create
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-create-a-unique-node-or-return-fail-fail
+%%
+-spec unique_create_node( neo4j_root()
+                        , proplists:proplist()
+                        , binary()
+                        , binary()
+                        , binary()
+                        , binary()
+                        ) -> neo4j_node() | {error, term()}.
+unique_create_node(Neo, Props, Index, Key, Value, Uniqueness) ->
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  Payload = jsonx:encode([ {<<"key">>, Key}
+                         , {<<"value">>, Value}
+                         , {<<"properties">>, Props}
+                         ]),
+  create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqueness/binary>>, Payload).
 
 %%_* Internal ==================================================================
 
