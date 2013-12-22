@@ -87,6 +87,9 @@
         , delete_node_index/2
         , node_indices/1
         , add_node_to_index/5
+        , remove_from_node_index/3
+        , remove_from_node_index/4
+        , remove_from_node_index/5
         ]).
 
 %%_* Defines ===================================================================
@@ -876,36 +879,30 @@ batch(Neo, Request) ->
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-create-node-index
 %%
 -spec create_node_index(neo4j_root(), binary()) -> neo4j_index() | {error, term()}.
-create_node_index(Neo, Name) when is_binary(Name) ->
+create_node_index(Neo, Name) ->
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
   Payload = jsonx:encode([{<<"name">>, Name}]),
-  create(URI, Payload);
-create_node_index(_, _) ->
-  {error, invalid_index_name}.
+  create(URI, Payload).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-create-node-index
 %%
 -spec create_node_index(neo4j_root(), binary(), proplists:proplist()) -> neo4j_index() | {error, term()}.
-create_node_index(Neo, Name, Config) when is_binary(Name) ->
+create_node_index(Neo, Name, Config) ->
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
   Payload = jsonx:encode([ {<<"name">>, Name}
                          , {<<"config">>, Config}
                          ]
                         ),
-  create(URI, Payload);
-create_node_index(_, _, _) ->
-  {error, invalid_index_name}.
+  create(URI, Payload).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-delete-node-index
 %%
 -spec delete_node_index(neo4j_root(), binary()) -> ok | {error, term()}.
-delete_node_index(Neo, Name) when is_binary(Name) ->
+delete_node_index(Neo, Name) ->
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
-  delete(<<URI/binary, "/", Name/binary>>);
-delete_node_index(_, _) ->
-  {error, invalid_index_name}.
+  delete(<<URI/binary, "/", Name/binary>>).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-list-node-indexes
@@ -924,21 +921,43 @@ node_indices(Neo) ->
                        , Key::binary
                        , Value::binary
                        ) -> term() | {error, term()}.
-add_node_to_index(Neo, Node0, Index, Key, Value) when is_binary(Index) ->
-  case get_node(Neo, Node0) of
-    {error, Reason} -> {error, Reason};
-    Node ->
-      {_, NodeURI} = lists:keyfind(<<"self">>, 1, Node),
-      Payload = jsonx:encode([ {<<"uri">>, NodeURI}
-                             , {<<"key">>, Key}
-                             , {<<"value">>, Value}
-                             ]
-                            ),
-      {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
-      create(<<URI/binary, "/", Index/binary>>, Payload)
-  end;
-add_node_to_index(_, _, _, _, _) ->
-  {error, invalid_index_name}.
+add_node_to_index(Neo, Node, Index, Key, Value) ->
+  {_, NodeURI} = lists:keyfind(<<"self">>, 1, Node),
+  Payload = jsonx:encode([ {<<"uri">>, NodeURI}
+                         , {<<"key">>, Key}
+                         , {<<"value">>, Value}
+                         ]
+                        ),
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  create(<<URI/binary, "/", Index/binary>>, Payload).
+
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node-from-an-index
+%%
+-spec remove_from_node_index( neo4j_root(), neo4j_node(), binary()) -> term() | {error, term()}.
+remove_from_node_index(Neo, Node, Index) ->
+  Id = id(Node),
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  delete(<<URI/binary, "/", Index/binary, "/", Id/binary>>).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node-and-key-from-an-index
+%%
+-spec remove_from_node_index( neo4j_root(), neo4j_node(), binary(), binary()) -> term() | {error, term()}.
+remove_from_node_index(Neo, Node, Index, Key) ->
+  Id = id(Node),
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Id/binary>>).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node
+%%
+-spec remove_from_node_index( neo4j_root(), neo4j_node(), binary(), binary(), binary()) -> term() | {error, term()}.
+remove_from_node_index(Neo, Node, Index, Key, Value) ->
+  Id = id(Node),
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary, "/", Id/binary>>).
 
 %%_* Legacy relationship indices ------------------------------------------------------
 
@@ -1190,6 +1209,11 @@ replace_param(URI, Param, Value) ->
 -spec is_uri(binary()) -> boolean().
 is_uri(<<$h, $t, $t, $p, _/binary>>) -> true;
 is_uri(_)                            -> false.
+
+-spec id(proplists:proplist()) -> binary().
+id(Obj) ->
+  {_, URI} = lists:keyfind(<<"self">>, 1, Obj),
+  lists:last(binary:split(URI, <<"/">>, [global])).
 
 -spec process_response(integer(), binary(), hackney:client()) -> {error, term()}.
 process_response(URI, 404, _Client) ->
