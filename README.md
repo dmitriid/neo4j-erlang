@@ -79,6 +79,28 @@ As [expected](http://docs.neo4j.org/chunked/stable/rest-api-unique-indexes.html#
 
 ## Assumptions
 
+### Location header
+
+If an operation returns a `HTTP 201 Created` with a `Location` header, the wrapper will prepend a `{<<"self">>, Location}` to the proplist returned. Be wary of this especially when using paged traversals.
+
+```erlang
+> Node = neo4j:get_node(Neo, 101).
+> Body = [ {<<"order">>, <<"breadth_first">>}
+         , {<<"uniqueness">>, <<"none">>}
+         , {<<"return_filter">>, [ {<<"language">>, <<"builtin">>}
+                                 , {<<"name">>, <<"all">>}
+                                 ]
+           }
+         ].
+> PT = neo4j:paged_traverse(Node, Body).
+[ %% <<"self">> is prepended
+ {<<"self">>,
+  <<"http://localhost:7474/db/data/node/101/paged/traverse/node/2e23bfca61144b0f91b446fb6be562b6">>},
+ %% actual data
+ [{<<"labels">>,
+ ...
+```
+
 ### No JSON, just proplists
 
 Even for complex queries (such as [Cypher queries](http://docs.neo4j.org/chunked/stable/rest-api-cypher.html) or [transactions](http://docs.neo4j.org/chunked/stable/rest-api-transactional.html)) you never send in raw JSON, only proplists representing your objects:
