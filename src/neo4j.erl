@@ -1516,34 +1516,25 @@ encode_transaction_query(Q) ->
                        ({binary()}) -> proplists:proplist();
                        ({binary(), proplists:proplist()}) -> proplists:proplist();
                        ({binary(), proplists:proplist(), [binary()]}) -> proplists:proplist().
+prepare_statement(Q) when is_binary(Q) ->
+  prepare_statement({Q, [], []});
 prepare_statement({Q}) ->
   prepare_statement({Q, [], []});
 prepare_statement({Q, P}) ->
   prepare_statement({Q, P, []});
-prepare_statement({_, _, _} = Q) ->
-  PrepareParams = fun(P) ->
-                    [{Key, [{<<"name">>, Value}]} || {Key, Value} <- P]
-                  end,
-  prepare_statement(Q, PrepareParams);
-prepare_statement(Q) when is_binary(Q) ->
-  prepare_statement({Q, [], []}).
-
--spec prepare_statement( {binary(), proplists:proplist(), [binary()]}
-                       , fun((proplists:proplist()) -> proplists:proplist())
-                       ) -> proplists:proplist().
-prepare_statement({Query, [], []}, _) ->
+prepare_statement({Query, [], []}) ->
   [{<<"statement">>, Query}];
-prepare_statement({Query, Params, []}, PrepareParams) ->
+prepare_statement({Query, Params, []}) ->
   [{<<"statement">>, Query}
-  , {<<"parameters">>, PrepareParams(Params)}
+  , {<<"parameters">>, Params}
   ];
-prepare_statement({Query, [], Formats}, _) ->
+prepare_statement({Query, [], Formats}) ->
   [{<<"statement">>, Query}
   , {<<"resultDataContents">>, Formats}
   ];
-prepare_statement({Query, Params, Formats}, PrepareParams) ->
+prepare_statement({Query, Params, Formats}) ->
   [{<<"statement">>, Query}
-  , {<<"parameters">>, PrepareParams(Params)}
+  , {<<"parameters">>, Params}
   , {<<"resultDataContents">>, Formats}
   ].
 
