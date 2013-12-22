@@ -75,6 +75,10 @@
         , paged_traverse/1
         , paged_traverse/2
         , paged_traverse/3
+        %% raph algorightms
+        , path/4
+        , paths/4
+        , graph_algorithm/5
         %% Legacy node indices
         , create_node_index/2
         , create_node_index/3
@@ -789,6 +793,42 @@ paged_traverse(Node, Request, Props) ->
   QueryURI = replace_param(TypedURI, <<"?pageSize,leaseTime">>, Query),
   Payload = jsonx:encode(Request),
   create(QueryURI, Payload).
+
+%%_* Graph algorightms ---------------------------------------------------------
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-graph-algos.html
+%%
+%%      Note: you'll have to construct some of yourrequest body manually, e.g:
+%%
+%%      Neo = neo4j:connect([{base_uri, BaseUri}]),
+%%      Node = neo4j:get_node(Neo, 101),
+%%      AdditionalParams = [{<<"relationships">>, [ {<<"type">>, <<"to">>}
+%%                                                , {<<"direction">>, <<"out">>}
+%%                                                ]
+%%                          }
+%%                         ],
+%%      neo4j:paths(Node, <<"shortestPath">>, 3, AdditionalParams).
+%%
+-spec paths(neo4j_node(), binary(), integer(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
+paths(Node, Algorithm, MaxDepth, Params) ->
+  graph_algorithm(<<"paths">>, Node, Algorithm, MaxDepth, Params).
+
+-spec path(neo4j_node(), binary(), integer(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
+path(Node, Algorithm, MaxDepth, Params) ->
+  graph_algorithm(<<"path">>, Node, Algorithm, MaxDepth, Params).
+
+-spec graph_algorithm(binary(), neo4j_node(), binary(), integer(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
+graph_algorithm(PathOrPaths, Node, Algorithm, MaxDepth, Params) ->
+  {_, URI} = lists:keyfind(<<"self">>, 1, Node),
+  PathsURI = <<URI/binary, "/", PathOrPaths/binary>>,
+  Payload = jsonx:encode([ {<<"to">>, URI}
+                         , {<<"algorithm">>, Algorithm}
+                         , {<<"max_depth">>, MaxDepth}
+                         | Params
+                         ]
+                        ),
+  create(PathsURI, Payload).
 
 %%
 %%_* Legacy node indices -------------------------------------------------------
