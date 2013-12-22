@@ -75,10 +75,12 @@
         , paged_traverse/1
         , paged_traverse/2
         , paged_traverse/3
-        %% raph algorightms
+        %% Graph algorithms
         , path/4
         , paths/4
         , graph_algorithm/5
+        %% Batch operations
+        , batch/2
         %% Legacy node indices
         , create_node_index/2
         , create_node_index/3
@@ -794,7 +796,7 @@ paged_traverse(Node, Request, Props) ->
   Payload = jsonx:encode(Request),
   create(QueryURI, Payload).
 
-%%_* Graph algorightms ---------------------------------------------------------
+%%_* Graph algorithms ----------------------------------------------------------
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-graph-algos.html
@@ -829,6 +831,43 @@ graph_algorithm(PathOrPaths, Node, Algorithm, MaxDepth, Params) ->
                          ]
                         ),
   create(PathsURI, Payload).
+
+%%_* Batch operations ----------------------------------------------------------
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-batch-ops.html
+%%
+%%      Note: you'll have to construct the batch operation manually:
+%%
+%%      Neo = neo4j:connect([{base_uri, BaseUri}]),
+%%      Payload = [ [ {<<"method">>, <<"PUT">>}
+%%                  , {<<"to">>, <<"/node/31/properties">>}
+%%                  , {<<"body">>, [{<<"age">>, 1}]}
+%%                  , {<<"id">>, 0}
+%%                  ]
+%%                , [ {<<"method">>, <<"GET">>}
+%%                  , {<<"to">>, <<"/node/31">>}
+%%                  , {<<"id">>, 1}
+%%                  ]
+%%                , [ {<<"method">>, <<"POST">>}
+%%                  , {<<"to">>, <<"/node">>}
+%%                  , {<<"body">>, [{<<"age">>, 1}]}
+%%                  , {<<"id">>, 2}
+%%                  ]
+%%                , [ {<<"method">>, <<"POST">>}
+%%                  , {<<"to">>, <<"/node">>}
+%%                  , {<<"body">>, [{<<"age">>, 1}]}
+%%                  , {<<"id">>, 3}
+%%                  ]
+%%                ],
+%%      neo4j:batch(Neo, Payload).
+%%
+-spec batch(neo4j_root(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
+batch(Neo, Request) ->
+  {_, URI} = lists:keyfind(<<"batch">>, 1, Neo),
+  Payload = jsonx:encode(Request),
+  create(URI, Payload).
+
 
 %%
 %%_* Legacy node indices -------------------------------------------------------
