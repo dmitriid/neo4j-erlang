@@ -90,6 +90,8 @@
         , remove_from_node_index/3
         , remove_from_node_index/4
         , remove_from_node_index/5
+        , find_node_exact/4
+        , find_node_query/3
         ]).
 
 %%_* Defines ===================================================================
@@ -935,7 +937,7 @@ add_node_to_index(Neo, Node, Index, Key, Value) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node-from-an-index
 %%
--spec remove_from_node_index( neo4j_root(), neo4j_node(), binary()) -> term() | {error, term()}.
+-spec remove_from_node_index(neo4j_root(), neo4j_node(), binary()) -> term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index) ->
   Id = id(Node),
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
@@ -944,7 +946,7 @@ remove_from_node_index(Neo, Node, Index) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node-and-key-from-an-index
 %%
--spec remove_from_node_index( neo4j_root(), neo4j_node(), binary(), binary()) -> term() | {error, term()}.
+-spec remove_from_node_index(neo4j_root(), neo4j_node(), binary(), binary()) -> term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index, Key) ->
   Id = id(Node),
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
@@ -953,11 +955,27 @@ remove_from_node_index(Neo, Node, Index, Key) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node
 %%
--spec remove_from_node_index( neo4j_root(), neo4j_node(), binary(), binary(), binary()) -> term() | {error, term()}.
+-spec remove_from_node_index(neo4j_root(), neo4j_node(), binary(), binary(), binary()) -> term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index, Key, Value) ->
   Id = id(Node),
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
   delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary, "/", Id/binary>>).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-find-node-by-exact-match
+%%
+-spec find_node_exact(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
+find_node_exact(Neo, Index, Key, Value) ->
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  retrieve(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary>>).
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-find-node-by-query
+%%
+-spec find_node_query(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
+find_node_query(Neo, Index, Query) ->
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>).
 
 %%_* Legacy relationship indices ------------------------------------------------------
 
