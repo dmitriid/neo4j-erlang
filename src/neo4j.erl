@@ -71,6 +71,10 @@
         %% Traverse
         , traverse/2
         , traverse/3
+        %% Paged traverse
+        , paged_traverse/1
+        , paged_traverse/2
+        , paged_traverse/3
         %% Legacy node indices
         , create_node_index/2
         , create_node_index/3
@@ -708,6 +712,7 @@ drop_constraint(Neo, Label, PropKey) ->
 %%      Note: you'll have to construct your request body manually, e.g:
 %%
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
+%%      Node = neo4j:get_node(Neo, 101),
 %%      Body = [ {<<"order">>, <<"breadth_first">>}
 %%             , {<<"uniqueness">>, <<"none">>}
 %%             , {<<"return_filter">>, [ {<<"language">>, <<"builtin">>}
@@ -715,9 +720,9 @@ drop_constraint(Neo, Label, PropKey) ->
 %%                                     ]
 %%               }
 %%             ],
-%%      neo4j:traverse(Neo, Body)
+%%      neo4j:traverse(Node, Body)
 %%         or
-%%      neo4j:traverse(Neo, Body, ReturnType) %% where ReturnType is a binary
+%%      neo4j:traverse(Node, Body, ReturnType) %% where ReturnType is a binary
 -spec traverse(neo4j_node(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
 traverse(Node, Request) ->
   traverse(Node, Request, <<"node">>).
@@ -727,6 +732,64 @@ traverse(Node, Request, ReturnType) ->
   {_, URI} = lists:keyfind(<<"traverse">>, 1, Node),
   Payload = jsonx:encode(Request),
   create(replace_param(URI, <<"returnType">>, ReturnType), Payload).
+
+%%_* Paged traverse ------------------------------------------------------------
+
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-traverse.html#rest-api-creating-a-paged-traverser
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-traverse.html#rest-api-paging-through-the-results-of-a-paged-traverser
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-traverse.html#rest-api-paged-traverser-page-size
+%%      http://docs.neo4j.org/chunked/milestone/rest-api-traverse.html#rest-api-paged-traverser-timeout
+%%
+%%      Note: you'll have to construct your request body manually, e.g:
+%%
+%%      Neo = neo4j:connect([{base_uri, BaseUri}]),
+%%      Node = neo4j:get_node(Neo, 101),
+%%      Body = [ {<<"order">>, <<"breadth_first">>}
+%%             , {<<"uniqueness">>, <<"none">>}
+%%             , {<<"return_filter">>, [ {<<"language">>, <<"builtin">>}
+%%                                     , {<<"name">>, <<"all">>}
+%%                                     ]
+%%               }
+%%             ],
+%%      PT = neo4j:paged_traverse(Node, Body)
+%%         or
+%%      PT = neo4j:paged_traverse(Node, Body, [ {<<"returnType">>, ReturnType}
+%%                                            , {<<"leaseTime">>, LeaseTime}
+%%                                            , {<<"pageSize">>, PageSize}
+%%                                            ]).
+%%
+%%      To retrieve the next page, just pass in the PT:
+%%
+%%      neo4j:paged_traverse(PT). %% and so on, until you get an
+%%                                %% {error, not_found}
+%%
+-spec paged_traverse(proplists:proplist()) -> proplists:proplist() | {error, term()}.
+paged_traverse(PagedTraverse) ->
+  {_, URI} = lists:keyfind(<<"self">>, 1, PagedTraverse),
+  retrieve(URI).
+
+-spec paged_traverse(neo4j_node(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
+paged_traverse(Node, Request) ->
+  paged_traverse(Node, Request, [{<<"returnType">>, <<"node">>}]).
+
+-spec paged_traverse(neo4j_node(), proplists:proplist(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
+paged_traverse(Node, Request, Props) ->
+  QueryProps = [P || P = {Key, _} <- Props, Key /= <<"returnType">>],
+  Query = case encode_query_string(QueryProps) of
+            <<>> -> <<>>;
+            S    -> <<"?", S/binary>>
+          end,
+  ReturnType = case lists:keyfind(return_type, 1, Props) of
+                 {_, R} -> R;
+                 _      -> <<"node">>
+               end,
+  {_, URI} = lists:keyfind(<<"paged_traverse">>, 1, Node),
+  TypedURI = replace_param(URI, <<"returnType">>, ReturnType),
+  QueryURI = replace_param(TypedURI, <<"?pageSize,leaseTime">>, Query),
+  Payload = jsonx:encode(Request),
+  create(QueryURI, Payload).
+
 %%
 %%_* Legacy node indices -------------------------------------------------------
 
@@ -811,10 +874,10 @@ get_root(BaseURI) when is_binary(BaseURI) ->
   case hackney:request(get, BaseURI, headers()) of
     {error, Reason} -> {error, Reason};
     {ok, StatusCode, _, Client} when StatusCode /= 200 ->
-      {ok, Body, _} = hackney:body(Client),
+      {ok, Body} = hackney:body(Client),
       {error, {non_200_response, StatusCode, Body}};
     {ok, _, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
+      {ok, Body} = hackney:body(Client),
       case jsonx:decode(Body, [{format, proplist}]) of
         {error, E1, E2} -> {error, {E1, E2}};
         Root          ->
@@ -837,11 +900,16 @@ create(URI) ->
   case hackney:request(post, URI, headers()) of
     {error, Reason} -> {error, Reason};
     {ok, 200, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
+      {ok, Body} = hackney:body(Client),
       jsonx:decode(Body, [{format, proplist}]);
-    {ok, 201, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
-      jsonx:decode(Body, [{format, proplist}]);
+    {ok, 201, Headers, Client} ->
+      {ok, Body} = hackney:body(Client),
+      case lists:keyfind(<<"Location">>, 1, Headers) of
+        {_, Location} -> [ {<<"self">>, Location}
+                         | jsonx:decode(Body, [{format, proplist}])
+                         ];
+        _             -> jsonx:decode(Body, [{format, proplist}])
+      end;
     {ok, 204, _, _} ->
       ok;
     {ok, Status, _, Client} ->
@@ -854,11 +922,16 @@ create(URI, Payload) ->
   case hackney:request(post, URI, headers(), Payload) of
     {error, Reason} -> {error, Reason};
     {ok, 200, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
+      {ok, Body} = hackney:body(Client),
       jsonx:decode(Body, [{format, proplist}]);
-    {ok, 201, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
-      jsonx:decode(Body, [{format, proplist}]);
+    {ok, 201, Headers, Client} ->
+      {ok, Body} = hackney:body(Client),
+      case lists:keyfind(<<"Location">>, 1, Headers) of
+        {_, Location} -> [ {<<"self">>, Location}
+                         | jsonx:decode(Body, [{format, proplist}])
+                         ];
+        _             -> jsonx:decode(Body, [{format, proplist}])
+      end;
     {ok, 204, _, _} ->
       ok;
     {ok, Status, _, Client} ->
@@ -873,7 +946,7 @@ retrieve(URI) ->
     {ok, 404, _, _} ->
       {error, not_found};
     {ok, 200, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
+      {ok, Body} = hackney:body(Client),
       jsonx:decode(Body, [{format, proplist}]);
     {ok, 204, _, _} ->
       <<>>;
@@ -900,7 +973,7 @@ delete(URI) ->
     {ok, 204, _, _} ->
       ok;
     {ok, 200, _, Client} ->
-      {ok, Body, _} = hackney:body(Client),
+      {ok, Body} = hackney:body(Client),
       jsonx:decode(Body, [{format, proplist}]);
     {ok, Status, _, Client} ->
       process_response(URI, Status, Client)
@@ -1045,7 +1118,7 @@ process_response(URI, 404, _Client) ->
 process_response(URI, 405, _Client) ->
   {error, {method_not_allowed, URI}};
 process_response(URI, Status, Client) ->
-  {ok, Body, _} = hackney:body(Client),
+  {ok, Body} = hackney:body(Client),
   case Body of
     <<>> -> {error, {Status, URI, <<>>}};
     _ -> {error, {Status, URI, jsonx:decode(Body, [{format, proplist}])}}
