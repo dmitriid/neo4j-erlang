@@ -18,6 +18,7 @@
         , get_nodes_by_label/2
         , get_nodes_by_label/3
         , get_labels/1
+        , get_properties/1
         %% Transactions
         , transaction_begin/2
         , transaction_execute/2
@@ -93,6 +94,7 @@
         , remove_from_node_index/5
         , find_node_exact/4
         , find_node_query/3
+        , find_node_query/4
         %% Legacy relationship indices
         , create_relationship_index/2
         , create_relationship_index/3
@@ -105,6 +107,7 @@
         , remove_from_relationship_index/5
         , find_relationship_exact/4
         , find_relationship_query/3
+        , find_relationship_query/4
         %% Uniqueness (legacy)
         , unique_create_node/6
         , unique_create_relationship/8
@@ -229,6 +232,16 @@ get_nodes_by_label(Neo, Label) ->
   retrieve(<<URI/binary, "/", Label/binary, "/nodes">>).
 
 %%
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-get-nodes-by-label-and-property
+%%
+-spec get_nodes_by_label(neo4j_root(), binary(), proplists:proplist()) -> [neo4j_node()] | {error, term()}.
+get_nodes_by_label(Neo, Label, Properties) ->
+  {_, URI} = lists:keyfind(<<"label">>, 1, Neo),
+  Props = encode_query_string(Properties),
+  retrieve(<<URI/binary, "/", Label/binary, "/nodes", "?", Props/binary>>).
+
+
+%%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-list-all-labels
 %%
 -spec get_labels(neo4j_root()) -> [binary()] | {error, term()}.
@@ -237,13 +250,13 @@ get_labels(Neo) ->
   retrieve(URI).
 
 %%
-%% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-get-nodes-by-label-and-property
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-property-values.html#rest-api-list-all-property-keys
 %%
--spec get_nodes_by_label(neo4j_root(), binary(), proplists:proplist()) -> [neo4j_node()] | {error, term()}.
-get_nodes_by_label(Neo, Label, Properties) ->
-  {_, URI} = lists:keyfind(<<"label">>, 1, Neo),
-  Props = encode_query_string(Properties),
-  retrieve(<<URI/binary, "/", Label/binary, "/nodes", "?", Props/binary>>).
+-spec get_properties(neo4j_root()) -> [binary()] | {error, term()}.
+get_properties(Neo) ->
+  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  retrieve(<<URI/binary, "propertykeys">>).
+
 
 %%_* Transactions --------------------------------------------------------------
 
@@ -1031,6 +1044,14 @@ find_node_query(Neo, Index, Query) ->
   {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>).
 
+%%
+%% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-find-node-by-query
+%%
+-spec find_node_query(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
+find_node_query(Neo, Index, Query, Ordering) ->
+  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary, "&ordering=", Ordering/binary>>).
+
 %%_* Legacy relationship indices ------------------------------------------------------
 
 %%
@@ -1153,6 +1174,14 @@ find_relationship_exact(Neo, Index, Key, Value) ->
 find_relationship_query(Neo, Index, Query) ->
   {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>).
+
+%%
+%% @doc
+%%
+-spec find_relationship_query(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
+find_relationship_query(Neo, Index, Query, Ordering) ->
+  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary, "&ordering=", Ordering/binary>>).
 
 %%_* Uniqueness (legacy) -------------------------------------------------------
 
