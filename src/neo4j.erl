@@ -1349,7 +1349,6 @@ get_root(BaseURI) when is_binary(BaseURI) ->
 
 -spec create(binary()) -> neo4j_type() | binary() | [term()] | {error, term()}.
 create(URI) ->
-  io:format("[POST] ~p~n", [URI]),
   case hackney:request(post, URI, headers()) of
     {error, Reason} -> {error, Reason};
     {ok, 200, _, Client} ->
@@ -1371,7 +1370,6 @@ create(URI) ->
 
 -spec create(binary(), binary()) -> neo4j_type() | binary() | [term()] | {error, term()}.
 create(URI, Payload) ->
-  io:format("[POST] ~p ~p~n", [URI, Payload]),
   case hackney:request(post, URI, headers(), Payload) of
     {error, Reason} -> {error, Reason};
     {ok, 200, _, Client} ->
@@ -1393,7 +1391,6 @@ create(URI, Payload) ->
 
 -spec retrieve(binary()) -> neo4j_type() | binary() | [term()] | {error, term()}.
 retrieve(URI) ->
-  io:format("[GET] ~p~n", [URI]),
   case hackney:request(get, URI, headers()) of
     {error, Reason} -> {error, Reason};
     {ok, 404, _, _} ->
@@ -1409,7 +1406,6 @@ retrieve(URI) ->
 
 -spec update(binary(), binary()) -> ok | {error, term()}.
 update(URI, Payload) ->
-  io:format("[PUT] ~p ~p~n", [URI, Payload]),
   case hackney:request(put, URI, headers(), Payload) of
     {error, Reason} -> {error, Reason};
     {ok, 204, _, _} ->
@@ -1420,7 +1416,6 @@ update(URI, Payload) ->
 
 -spec delete(binary()) -> ok | {error, term()}.
 delete(URI) ->
-  io:format("[DELETE] ~p~n", [URI]),
   case hackney:request(delete, URI) of
     {error, Reason} -> {error, Reason};
     {ok, 204, _, _} ->
