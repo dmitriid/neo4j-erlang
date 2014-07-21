@@ -2,3 +2,13 @@
 /ebin/*
 erl_crash.dump
 *.iml
+/test/*.beam
+.idea
+/ct*
+/_rel
+/logs
+relx
+*.js
+*.html
+*.plt
+variables-*
