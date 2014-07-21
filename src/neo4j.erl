@@ -156,7 +156,7 @@ connect([]) ->
   {error, base_uri_not_specified};
 connect(Options) ->
   _ = start_app(hackney),
-  case lists:keyfind(base_uri, 1, Options) of
+  case find(base_uri, 1, Options) of
     {_, BaseURI} -> get_root(BaseURI);
     _            -> {error, base_uri_not_specified}
   end.
@@ -167,7 +167,7 @@ connect(Options) ->
 %%
 -spec get_relationship_types(neo4j_root()) -> [binary()] | {error, term()}.
 get_relationship_types(Neo) ->
-  {_, URI} = lists:keyfind(<<"relationship_types">>, 1, Neo),
+  {_, URI} = find(<<"relationship_types">>, 1, Neo),
   retrieve(URI).
 
 %%
@@ -175,7 +175,7 @@ get_relationship_types(Neo) ->
 %%
 -spec get_nodes_by_label(neo4j_root(), binary()) -> [neo4j_node()] | {error, term()}.
 get_nodes_by_label(Neo, Label) ->
-  {_, URI} = lists:keyfind(<<"label">>, 1, Neo),
+  {_, URI} = find(<<"label">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary, "/nodes">>).
 
 %%
@@ -183,7 +183,7 @@ get_nodes_by_label(Neo, Label) ->
 %%
 -spec get_nodes_by_label(neo4j_root(), binary(), proplists:proplist()) -> [neo4j_node()] | {error, term()}.
 get_nodes_by_label(Neo, Label, Properties) ->
-  {_, URI} = lists:keyfind(<<"label">>, 1, Neo),
+  {_, URI} = find(<<"label">>, 1, Neo),
   Props = encode_query_string(Properties),
   retrieve(<<URI/binary, "/", Label/binary, "/nodes", "?", Props/binary>>).
 
@@ -193,7 +193,7 @@ get_nodes_by_label(Neo, Label, Properties) ->
 %%
 -spec get_labels(neo4j_root()) -> [binary()] | {error, term()}.
 get_labels(Neo) ->
-  {_, URI} = lists:keyfind(<<"labels">>, 1, Neo),
+  {_, URI} = find(<<"labels">>, 1, Neo),
   retrieve(URI).
 
 %%
@@ -201,7 +201,7 @@ get_labels(Neo) ->
 %%
 -spec get_properties(neo4j_root()) -> [binary()] | {error, term()}.
 get_properties(Neo) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "propertykeys">>).
 
 
@@ -215,7 +215,7 @@ get_properties(Neo) ->
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
 %%      neo4j:transaction_begin( Neo
 %%                             , [ { <<"CREATE (n {props}) RETURN n">>
-%%                                 , [{<<"props">>, <<"My Node">>}]
+%%                                 , {[{<<"props">>, <<"My Node">>}]}
 %%                                 , [<<"REST>>"] %% optional parameter for data format
 %%                                 }
 %%                               ]
@@ -223,7 +223,7 @@ get_properties(Neo) ->
 %%
 -spec transaction_begin(neo4j_root(), neo4j_transaction_query()) -> proplists:proplist() | {error, term()}.
 transaction_begin(Neo, Query) ->
-  {_, URI} = lists:keyfind(<<"transaction">>, 1, Neo),
+  {_, URI} = find(<<"transaction">>, 1, Neo),
   Payload = encode_transaction_query(Query),
   create(URI, Payload).
 
@@ -235,11 +235,10 @@ transaction_begin(Neo, Query) ->
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
 %%      T = neo4j:transaction_begin( Neo
 %%                                 , [ { <<"CREATE (n {props}) RETURN n">>
-%%                                     , [{<<"props">>, <<"My Node">>}]
+%%                                     , {[{<<"props">>, <<"My Node">>}]}
 %%                                     , [<<"REST>>"] %% optional parameter for data format
 %%                                     }
 %%                                   ]
-%%                                 , [<<"REST>>"] %% optional parameter for data format
 %%                                 ),
 %%      T1 = neo4j:transaction_execute(T, Query)...
 %%
@@ -252,7 +251,7 @@ transaction_begin(Neo, Query) ->
 %%
 -spec transaction_execute(neo4j_transaction(), neo4j_transaction_query()) -> proplists:proplist() | {error, term()}.
 transaction_execute(T, Query) ->
-  {_, URI0} = lists:keyfind(<<"commit">>, 1, T),
+  {_, URI0} = find(<<"commit">>, 1, T),
   URI = binary:part(URI0, {0, byte_size(URI0) - 7}),
   Payload = encode_transaction_query(Query),
   create(URI, Payload).
@@ -264,7 +263,7 @@ transaction_execute(T, Query) ->
 %%
 -spec transaction_commit(neo4j_transaction()) -> proplists:proplist() | {error, term()}.
 transaction_commit(T) ->
-  {_, URI} = lists:keyfind(<<"commit">>, 1, T),
+  {_, URI} = find(<<"commit">>, 1, T),
   create(URI).
 
 %%
@@ -274,7 +273,7 @@ transaction_commit(T) ->
 %%
 -spec transaction_commit(neo4j_transaction(), neo4j_transaction_query()) -> proplists:proplist() | {error, term()}.
 transaction_commit(T, Query) ->
-  {_, URI} = lists:keyfind(<<"commit">>, 1, T),
+  {_, URI} = find(<<"commit">>, 1, T),
   Payload = encode_transaction_query(Query),
   create(URI, Payload).
 
@@ -283,7 +282,7 @@ transaction_commit(T, Query) ->
 %%
 -spec transaction_rollback(neo4j_transaction()) -> proplists:proplist() | {error, term()}.
 transaction_rollback(T) ->
-  {_, URI0} = lists:keyfind(<<"commit">>, 1, T),
+  {_, URI0} = find(<<"commit">>, 1, T),
   URI = binary:part(URI0, {0, byte_size(URI0) - 7}),
   delete(URI).
 
@@ -295,7 +294,7 @@ transaction_rollback(T) ->
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
 %%      neo4j:transaction_execute_commit( Neo
 %%                                      , [ { <<"CREATE (n {props}) RETURN n">>
-%%                                          , [{<<"props">>, <<"My Node">>}]
+%%                                          , {[{<<"props">>, <<"My Node">>}]}
 %%                                          , [<<"REST>>"] %% optional parameter for data format
 %%                                          }
 %%                                        ]
@@ -303,15 +302,25 @@ transaction_rollback(T) ->
 %%
 -spec transaction_execute_commit(neo4j_root(), neo4j_transaction_query()) -> proplists:proplist() | {error, term()}.
 transaction_execute_commit(Neo, Query) ->
-  {_, URI} = lists:keyfind(<<"transaction">>, 1, Neo),
+  {_, URI} = find(<<"transaction">>, 1, Neo),
   Payload = encode_transaction_query(Query),
   create(<<URI/binary, "/commit">>, Payload).
 
 %%_* Cypher --------------------------------------------------------------------
 
 %%
-%% http://docs.neo4j.org/chunked/stable/rest-api-cypher.html#rest-api-send-a-query
+%% @doc http://docs.neo4j.org/chunked/stable/rest-api-cypher.html#rest-api-send-a-query
 %%
+%%      Neo = neo4j:connect([{base_uri, BaseUri}]),
+%%      Cypher = <<"CREATE (n:Person {name: 'this property is to be deleted'}) SET n = {props} RETURN n">>,
+%%      Props = {[{<<"props">>, {[ {<<"position">>,  <<"Developer">>}
+%%                              , {<<"firstName">>, <<"Michael">>}
+%%                              , {<<"awesome">>, true}
+%%                              , {<<"children">>, 3}
+%%                              ]}}
+%%               ]},
+%%      neo4j:cypher(Neo, Cypher, Props).
+
 -spec cypher(neo4j_root(), binary()) -> cypher_result().
 cypher(Neo, Query) ->
   cypher(Neo, Query, [{<<>>, <<>>}]).
@@ -321,8 +330,8 @@ cypher(Neo, Query) ->
 %%
 -spec cypher(neo4j_root(), binary(), proplists:proplist()) -> cypher_result() | {error, term()}.
 cypher(Neo, Query, Params) ->
-  {_, URI} = lists:keyfind(<<"cypher">>, 1, Neo),
-  Payload = jsonx:encode([{query, Query}, {params, Params}]),
+  {_, URI} = find(<<"cypher">>, 1, Neo),
+  Payload = jiffy:encode({[{query, Query}, {params, Params}]}),
   create(URI, Payload).
 
 %%_* Nodes ---------------------------------------------------------------------
@@ -332,7 +341,7 @@ cypher(Neo, Query, Params) ->
 %%
 -spec create_node(neo4j_root()) -> neo4j_node() | {error, term()}.
 create_node(Neo) ->
-  {_, URI} = lists:keyfind(<<"node">>, 1, Neo),
+  {_, URI} = find(<<"node">>, 1, Neo),
   create(URI).
 
 %%
@@ -340,8 +349,8 @@ create_node(Neo) ->
 %%
 -spec create_node(neo4j_root(), proplists:proplist()) -> neo4j_node() | {error, term()}.
 create_node(Neo, Props) ->
-  {_, URI} = lists:keyfind(<<"node">>, 1, Neo),
-  Payload = jsonx:encode(Props),
+  {_, URI} = find(<<"node">>, 1, Neo),
+  Payload = jiffy:encode(Props),
   create(URI, Payload).
 
 %%
@@ -357,7 +366,7 @@ get_node(Neo, Id) when is_binary(Id) ->
     true  ->
       retrieve(Id);
     false ->
-      {_, URI} = lists:keyfind(<<"node">>, 1, Neo),
+      {_, URI} = find(<<"node">>, 1, Neo),
       retrieve(<<URI/binary, "/", Id/binary>>)
   end;
 get_node(Neo, Id0) ->
@@ -371,7 +380,7 @@ get_node(Neo, Id0) ->
 %%
 -spec delete_node(neo4j_node()) -> ok | {error, term()}.
 delete_node(Node) ->
-  {_, URI} = lists:keyfind(<<"self">>, 1, Node),
+  {_, URI} = find(<<"self">>, 1, Node),
   delete(URI).
 
 %%
@@ -379,7 +388,7 @@ delete_node(Node) ->
 %%
 -spec get_node_properties(neo4j_node() | neo4j_id()) -> proplists:proplist() | {error, term()}.
 get_node_properties(Node) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Node),
+  {_, URI} = find(<<"properties">>, 1, Node),
   retrieve(URI).
 
 %%
@@ -388,15 +397,15 @@ get_node_properties(Node) ->
 -spec set_node_properties( neo4j_node()
                          , proplist:proplist()) -> ok | {error, term()}.
 set_node_properties(Node, Props) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Node),
-  update(URI, jsonx:encode(Props)).
+  {_, URI} = find(<<"properties">>, 1, Node),
+  update(URI, jiffy:encode(Props)).
 
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html
 %%
 -spec get_node_property(neo4j_node(), binary()) -> term() | {error, term()}.
 get_node_property(Node, Prop) when is_binary(Prop) ->
-  {_, URI} = lists:keyfind(<<"property">>, 1, Node),
+  {_, URI} = find(<<"property">>, 1, Node),
   retrieve(replace_param(URI, <<"key">>, Prop));
 get_node_property(_, _) ->
   {error, invalid_property}.
@@ -409,8 +418,8 @@ get_node_property(_, _) ->
                        , term()
                        ) -> ok | {error, term()}.
 set_node_property(Node, Prop, Val) when is_binary(Prop) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Node),
-  Payload = jsonx:encode(Val),
+  {_, URI} = find(<<"properties">>, 1, Node),
+  Payload = jiffy:encode(Val),
   update(<<URI/binary, "/", Prop/binary, "/">>, Payload);
 set_node_property(_, _, _) ->
   {error, invalid_property}.
@@ -420,7 +429,7 @@ set_node_property(_, _, _) ->
 %%
 -spec delete_node_properties(neo4j_node()) -> ok | {error, term()}.
 delete_node_properties(Node) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Node),
+  {_, URI} = find(<<"properties">>, 1, Node),
   delete(URI).
 
 
@@ -429,7 +438,7 @@ delete_node_properties(Node) ->
 %%
 -spec delete_node_property(neo4j_node(), binary()) -> ok | {error, term()}.
 delete_node_property(Node, Prop) when is_binary(Prop) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Node),
+  {_, URI} = find(<<"properties">>, 1, Node),
   delete(<<URI/binary, "/", Prop/binary>>);
 delete_node_property(_, _) ->
   {error, invalid_property}.
@@ -470,8 +479,8 @@ get_typed_relationships(Node, Type, Direction) ->
                      , binary() | [binary()]
                      ) -> ok | {error, term()}.
 add_node_labels(Node, Labels) ->
-  {_, URI} = lists:keyfind(<<"labels">>, 1, Node),
-  create(URI, jsonx:encode(Labels)).
+  {_, URI} = find(<<"labels">>, 1, Node),
+  create(URI, jiffy:encode(Labels)).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-replacing-labels-on-a-node
@@ -480,8 +489,8 @@ add_node_labels(Node, Labels) ->
                      , binary() | [binary()]
                      ) -> ok | {error, term()}.
 set_node_labels(Node, Labels) ->
-  {_, URI} = lists:keyfind(<<"labels">>, 1, Node),
-  update(URI, jsonx:encode(Labels)).
+  {_, URI} = find(<<"labels">>, 1, Node),
+  update(URI, jiffy:encode(Labels)).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-removing-a-label-from-a-node
@@ -490,7 +499,7 @@ set_node_labels(Node, Labels) ->
                        , binary()
                        ) -> ok | {error, term()}.
 delete_node_label(Node, Label) ->
-  {_, URI} = lists:keyfind(<<"labels">>, 1, Node),
+  {_, URI} = find(<<"labels">>, 1, Node),
   delete(<<URI/binary, "/", Label/binary>>).
 
 %%
@@ -498,7 +507,7 @@ delete_node_label(Node, Label) ->
 %%
 -spec get_node_labels(neo4j_node()) -> ok | {error, term()}.
 get_node_labels(Node) ->
-  {_, URI} = lists:keyfind(<<"labels">>, 1, Node),
+  {_, URI} = find(<<"labels">>, 1, Node),
   retrieve(URI).
 
 %%_* Relationships--------------------------------------------------------------
@@ -513,7 +522,7 @@ get_relationship(Neo, Id) when is_binary(Id) ->
   case is_uri(Id) of
     true -> retrieve(Id);
     false ->
-      {_, URI} = lists:keyfind(<<"relationship">>, 1, Neo),
+      {_, URI} = find(<<"relationship">>, 1, Neo),
       retrieve(<<URI/binary, "/", Id/binary>>)
   end;
 get_relationship(Neo, Id0) ->
@@ -530,11 +539,11 @@ get_relationship(Neo, Id0) ->
                          , binary()
                          ) -> neo4j_relationship().
 create_relationship(FromNode, ToNode, Type) ->
-  {_, CreateURI} = lists:keyfind(<<"create_relationship">>, 1, FromNode),
-  {_, ToURI} = lists:keyfind(<<"self">>, 1, ToNode),
-  Payload = jsonx:encode([ {<<"to">>, ToURI}
-                         , {<<"type">>, Type}
-                         ]),
+  {_, CreateURI} = find(<<"create_relationship">>, 1, FromNode),
+  {_, ToURI} = find(<<"self">>, 1, ToNode),
+  Payload = jiffy:encode({[ {<<"to">>, ToURI}
+                          , {<<"type">>, Type}
+                          ]}),
   create(CreateURI, Payload).
 
 %%
@@ -546,12 +555,12 @@ create_relationship(FromNode, ToNode, Type) ->
                          , proplists:proplist()
                          ) -> neo4j_relationship().
 create_relationship(FromNode, ToNode, Type, Props) ->
-  {_, CreateURI} = lists:keyfind(<<"create_relationship">>, 1, FromNode),
-  {_, ToURI} = lists:keyfind(<<"self">>, 1, ToNode),
-  Payload = jsonx:encode([ {<<"to">>, ToURI}
-                         , {<<"type">>, Type}
-                         , {<<"data">>, Props}
-                         ]),
+  {_, CreateURI} = find(<<"create_relationship">>, 1, FromNode),
+  {_, ToURI} = find(<<"self">>, 1, ToNode),
+  Payload = jiffy:encode({[ {<<"to">>, ToURI}
+                          , {<<"type">>, Type}
+                          , {<<"data">>, Props}
+                          ]}),
   create(CreateURI, Payload).
 
 %%
@@ -559,7 +568,7 @@ create_relationship(FromNode, ToNode, Type, Props) ->
 %%
 -spec delete_relationship(neo4j_relationship()) -> ok | {error, term()}.
 delete_relationship(Relationship) ->
-  {_, URI} = lists:keyfind(<<"self">>, 1, Relationship),
+  {_, URI} = find(<<"self">>, 1, Relationship),
   delete(URI).
 
 %%
@@ -567,7 +576,7 @@ delete_relationship(Relationship) ->
 %%
 -spec get_relationship_properties(neo4j_relationship() | neo4j_id()) -> proplists:proplist() | {error, term()}.
 get_relationship_properties(Relationship) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Relationship),
+  {_, URI} = find(<<"properties">>, 1, Relationship),
   retrieve(URI).
 
 %%
@@ -576,8 +585,8 @@ get_relationship_properties(Relationship) ->
 -spec set_relationship_properties( neo4j_relationship()
                                  , proplist:proplist()) -> ok | {error, term()}.
 set_relationship_properties(Relationship, Props) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Relationship),
-  update(URI, jsonx:encode(Props)).
+  {_, URI} = find(<<"properties">>, 1, Relationship),
+  update(URI, jiffy:encode(Props)).
 
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-all-properties-on-a-relationship
@@ -586,7 +595,7 @@ set_relationship_properties(Relationship, Props) ->
                                , binary()
                                ) -> proplists:proplist() | {error, term()}.
 get_relationship_property(Relationship, Prop) when is_binary(Prop) ->
-  {_, URI} = lists:keyfind(<<"property">>, 1, Relationship),
+  {_, URI} = find(<<"property">>, 1, Relationship),
   retrieve(replace_param(URI, <<"key">>, Prop));
 get_relationship_property(_, _) ->
   {error, invalid_property}.
@@ -599,8 +608,8 @@ get_relationship_property(_, _) ->
                                , term()
                                ) -> ok | {error, term()}.
 set_relationship_property(Relationship, Prop, Val) when is_binary(Prop) ->
-      {_, URI} = lists:keyfind(<<"properties">>, 1, Relationship),
-      Payload = jsonx:encode(Val),
+      {_, URI} = find(<<"properties">>, 1, Relationship),
+      Payload = jiffy:encode(Val),
       update(<<URI/binary, "/", Prop/binary, "/">>, Payload);
 set_relationship_property(_, _, _) ->
   {error, invalid_property}.
@@ -610,7 +619,7 @@ set_relationship_property(_, _, _) ->
 %%
 -spec delete_relationship_properties(neo4j_relationship()) -> ok | {error, term()}.
 delete_relationship_properties(Relationship) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Relationship),
+  {_, URI} = find(<<"properties">>, 1, Relationship),
   delete(URI).
 
 %%
@@ -620,7 +629,7 @@ delete_relationship_properties(Relationship) ->
                                   , binary()
                                   ) -> ok | {error, term()}.
 delete_relationship_property(Relationship, Prop) when is_binary(Prop) ->
-  {_, URI} = lists:keyfind(<<"properties">>, 1, Relationship),
+  {_, URI} = find(<<"properties">>, 1, Relationship),
   delete(<<URI/binary, "/", Prop/binary>>);
 delete_relationship_property(_, _) ->
   {error, invalid_property}.
@@ -632,8 +641,8 @@ delete_relationship_property(_, _) ->
 %%
 -spec create_index(neo4j_root(), binary(), [binary()]) -> propliststs:proplist() | {error, term()}.
 create_index(Neo, Label, PropKeys) ->
-  {_, URI} = lists:keyfind(<<"index">>, 1, Neo),
-  Payload = jsonx:encode([{<<"property_keys">>, PropKeys}]),
+  {_, URI} = find(<<"index">>, 1, Neo),
+  Payload = jiffy:encode({[{<<"property_keys">>, PropKeys}]}),
   create(<<URI/binary, "/", Label/binary>>, Payload).
 
 %%
@@ -641,7 +650,7 @@ create_index(Neo, Label, PropKeys) ->
 %%
 -spec drop_index(neo4j_root(), binary(), binary()) -> propliststs:proplist() | {error, term()}.
 drop_index(Neo, Label, Key) ->
-  {_, URI} = lists:keyfind(<<"index">>, 1, Neo),
+  {_, URI} = find(<<"index">>, 1, Neo),
   delete(<<URI/binary, "/", Label/binary, "/", Key/binary>>).
 
 %%
@@ -649,7 +658,7 @@ drop_index(Neo, Label, Key) ->
 %%
 -spec list_indexes(neo4j_root(), binary()) -> propliststs:proplist() | {error, term()}.
 list_indexes(Neo, Label) ->
-  {_, URI} = lists:keyfind(<<"index">>, 1, Neo),
+  {_, URI} = find(<<"index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary>>).
 
 %%_* Consraints ----------------------------------------------------------------
@@ -659,16 +668,16 @@ list_indexes(Neo, Label) ->
 %%
 -spec create_constraint(neo4j_root(), binary(), [binary()]) -> propliststs:proplist() | {error, term()}.
 create_constraint(Neo, Label, PropKeys) ->
-  {_, URI} = lists:keyfind(<<"constraint">>, 1, Neo),
-  Payload = jsonx:encode([{<<"property_keys">>, PropKeys}]),
+  {_, URI} = find(<<"constraint">>, 1, Neo),
+  Payload = jiffy:encode({[{<<"property_keys">>, PropKeys}]}),
   create(<<URI/binary, "/", Label/binary, "/uniqueness">>, Payload).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-constraints.html#rest-api-get-a-specific-uniqueness-constraint
 %%
--spec get_constraint(neo4j_root(), binary(), [binary()]) -> propliststs:proplist() | {error, term()}.
+-spec get_constraint(neo4j_root(), binary(), binary()) -> propliststs:proplist() | {error, term()}.
 get_constraint(Neo, Label, PropKey) ->
-  {_, URI} = lists:keyfind(<<"constraint">>, 1, Neo),
+  {_, URI} = find(<<"constraint">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary, "/uniqueness/", PropKey/binary>>).
 
 
@@ -677,7 +686,7 @@ get_constraint(Neo, Label, PropKey) ->
 %%
 -spec get_uniqueness_constraints(neo4j_root(), binary()) -> propliststs:proplist() | {error, term()}.
 get_uniqueness_constraints(Neo, Label) ->
-  {_, URI} = lists:keyfind(<<"constraint">>, 1, Neo),
+  {_, URI} = find(<<"constraint">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary, "/uniqueness">>).
 
 
@@ -686,7 +695,7 @@ get_uniqueness_constraints(Neo, Label) ->
 %%
 -spec get_label_constraints(neo4j_root(), binary()) -> propliststs:proplist() | {error, term()}.
 get_label_constraints(Neo, Label) ->
-  {_, URI} = lists:keyfind(<<"constraint">>, 1, Neo),
+  {_, URI} = find(<<"constraint">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary>>).
 
 
@@ -695,16 +704,16 @@ get_label_constraints(Neo, Label) ->
 %%
 -spec get_constraints(neo4j_root()) -> propliststs:proplist() | {error, term()}.
 get_constraints(Neo) ->
-  {_, URI} = lists:keyfind(<<"constraint">>, 1, Neo),
+  {_, URI} = find(<<"constraint">>, 1, Neo),
   retrieve(URI).
 
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-constraints.html#rest-api-drop-constraint
 %%
--spec drop_constraint(neo4j_root(), binary(), [binary()]) -> propliststs:proplist() | {error, term()}.
+-spec drop_constraint(neo4j_root(), binary(), binary()) -> propliststs:proplist() | {error, term()}.
 drop_constraint(Neo, Label, PropKey) ->
-  {_, URI} = lists:keyfind(<<"constraint">>, 1, Neo),
+  {_, URI} = find(<<"constraint">>, 1, Neo),
   delete(<<URI/binary, "/", Label/binary, "/uniqueness/", PropKey/binary>>).
 
 
@@ -717,13 +726,13 @@ drop_constraint(Neo, Label, PropKey) ->
 %%
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
 %%      Node = neo4j:get_node(Neo, 101),
-%%      Body = [ {<<"order">>, <<"breadth_first">>}
-%%             , {<<"uniqueness">>, <<"none">>}
-%%             , {<<"return_filter">>, [ {<<"language">>, <<"builtin">>}
-%%                                     , {<<"name">>, <<"all">>}
-%%                                     ]
-%%               }
-%%             ],
+%%      Body = {[ {<<"order">>, <<"breadth_first">>}
+%%              , {<<"uniqueness">>, <<"none">>}
+%%              , {<<"return_filter">>, {[ {<<"language">>, <<"builtin">>}
+%%                                       , {<<"name">>, <<"all">>}
+%%                                       ]}
+%%                }
+%%              ]},
 %%      neo4j:traverse(Node, Body)
 %%         or
 %%      neo4j:traverse(Node, Body, ReturnType) %% where ReturnType is a binary
@@ -733,8 +742,8 @@ traverse(Node, Request) ->
 
 -spec traverse(neo4j_node(), proplists:proplist(), binary()) -> proplists:proplist() | {error, term()}.
 traverse(Node, Request, ReturnType) ->
-  {_, URI} = lists:keyfind(<<"traverse">>, 1, Node),
-  Payload = jsonx:encode(Request),
+  {_, URI} = find(<<"traverse">>, 1, Node),
+  Payload = jiffy:encode(Request),
   create(replace_param(URI, <<"returnType">>, ReturnType), Payload).
 
 %%_* Paged traverse ------------------------------------------------------------
@@ -749,13 +758,13 @@ traverse(Node, Request, ReturnType) ->
 %%
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
 %%      Node = neo4j:get_node(Neo, 101),
-%%      Body = [ {<<"order">>, <<"breadth_first">>}
-%%             , {<<"uniqueness">>, <<"none">>}
-%%             , {<<"return_filter">>, [ {<<"language">>, <<"builtin">>}
-%%                                     , {<<"name">>, <<"all">>}
-%%                                     ]
-%%               }
-%%             ],
+%%      Body = {[ {<<"order">>, <<"breadth_first">>}
+%%              , {<<"uniqueness">>, <<"none">>}
+%%              , {<<"return_filter">>, {[ {<<"language">>, <<"builtin">>}
+%%                                       , {<<"name">>, <<"all">>}
+%%                                       ]}
+%%                }
+%%              ]},
 %%      PT = neo4j:paged_traverse(Node, Body)
 %%         or
 %%      PT = neo4j:paged_traverse(Node, Body, [ {<<"returnType">>, ReturnType}
@@ -770,7 +779,7 @@ traverse(Node, Request, ReturnType) ->
 %%
 -spec paged_traverse(proplists:proplist()) -> proplists:proplist() | {error, term()}.
 paged_traverse(PagedTraverse) ->
-  {_, URI} = lists:keyfind(<<"self">>, 1, PagedTraverse),
+  {_, URI} = find(<<"self">>, 1, PagedTraverse),
   retrieve(URI).
 
 -spec paged_traverse(neo4j_node(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
@@ -784,14 +793,14 @@ paged_traverse(Node, Request, Props) ->
             <<>> -> <<>>;
             S    -> <<"?", S/binary>>
           end,
-  ReturnType = case lists:keyfind(return_type, 1, Props) of
+  ReturnType = case find(return_type, 1, Props) of
                  {_, R} -> R;
                  _      -> <<"node">>
                end,
-  {_, URI} = lists:keyfind(<<"paged_traverse">>, 1, Node),
+  {_, URI} = find(<<"paged_traverse">>, 1, Node),
   TypedURI = replace_param(URI, <<"returnType">>, ReturnType),
   QueryURI = replace_param(TypedURI, <<"?pageSize,leaseTime">>, Query),
-  Payload = jsonx:encode(Request),
+  Payload = jiffy:encode(Request),
   create(QueryURI, Payload).
 
 %%_* Graph algorithms ----------------------------------------------------------
@@ -799,15 +808,15 @@ paged_traverse(Node, Request, Props) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-graph-algos.html
 %%
-%%      Note: you'll have to construct some of yourrequest body manually, e.g:
+%%      Note: you'll have to construct some of your request body manually, e.g:
 %%
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
 %%      Node = neo4j:get_node(Neo, 101),
-%%      AdditionalParams = [{<<"relationships">>, [ {<<"type">>, <<"to">>}
-%%                                                , {<<"direction">>, <<"out">>}
-%%                                                ]
-%%                          }
-%%                         ],
+%%      AdditionalParams = {[{<<"relationships">>, {[ {<<"type">>, <<"to">>}
+%%                                                  , {<<"direction">>, <<"out">>}
+%%                                                  ]}
+%%                           }
+%%                          ]},
 %%      neo4j:paths(Node, <<"shortestPath">>, 3, AdditionalParams).
 %%
 -spec paths(neo4j_node(), binary(), integer(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
@@ -820,14 +829,13 @@ path(Node, Algorithm, MaxDepth, Params) ->
 
 -spec graph_algorithm(binary(), neo4j_node(), binary(), integer(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
 graph_algorithm(PathOrPaths, Node, Algorithm, MaxDepth, Params) ->
-  {_, URI} = lists:keyfind(<<"self">>, 1, Node),
+  {_, URI} = find(<<"self">>, 1, Node),
   PathsURI = <<URI/binary, "/", PathOrPaths/binary>>,
-  Payload = jsonx:encode([ {<<"to">>, URI}
-                         , {<<"algorithm">>, Algorithm}
-                         , {<<"max_depth">>, MaxDepth}
-                         | Params
-                         ]
-                        ),
+  Payload = jiffy:encode({[ {<<"to">>, URI}
+                          , {<<"algorithm">>, Algorithm}
+                          , {<<"max_depth">>, MaxDepth}
+                          | Params
+                          ]}),
   create(PathsURI, Payload).
 
 %%_* Batch operations ----------------------------------------------------------
@@ -838,32 +846,32 @@ graph_algorithm(PathOrPaths, Node, Algorithm, MaxDepth, Params) ->
 %%      Note: you'll have to construct the batch operation manually:
 %%
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
-%%      Payload = [ [ {<<"method">>, <<"PUT">>}
-%%                  , {<<"to">>, <<"/node/31/properties">>}
-%%                  , {<<"body">>, [{<<"age">>, 1}]}
-%%                  , {<<"id">>, 0}
-%%                  ]
-%%                , [ {<<"method">>, <<"GET">>}
-%%                  , {<<"to">>, <<"/node/31">>}
-%%                  , {<<"id">>, 1}
-%%                  ]
-%%                , [ {<<"method">>, <<"POST">>}
-%%                  , {<<"to">>, <<"/node">>}
-%%                  , {<<"body">>, [{<<"age">>, 1}]}
-%%                  , {<<"id">>, 2}
-%%                  ]
-%%                , [ {<<"method">>, <<"POST">>}
-%%                  , {<<"to">>, <<"/node">>}
-%%                  , {<<"body">>, [{<<"age">>, 1}]}
-%%                  , {<<"id">>, 3}
-%%                  ]
-%%                ],
+%%      Payload = {[ {[ {<<"method">>, <<"PUT">>}
+%%                    , {<<"to">>, <<"/node/31/properties">>}
+%%                    , {<<"body">>, {[{<<"age">>, 1}]}}
+%%                    , {<<"id">>, 0}
+%%                    ]}
+%%                ,  {[ {<<"method">>, <<"GET">>}
+%%                    , {<<"to">>, <<"/node/31">>}
+%%                    , {<<"id">>, 1}
+%%                    ]}
+%%                ,  {[ {<<"method">>, <<"POST">>}
+%%                    , {<<"to">>, <<"/node">>}
+%%                    , {<<"body">>, {[{<<"age">>, 1}]}}
+%%                    , {<<"id">>, 2}
+%%                    ]}
+%%                ,  {[ {<<"method">>, <<"POST">>}
+%%                    , {<<"to">>, <<"/node">>}
+%%                    , {<<"body">>, {[{<<"age">>, 1}]}}
+%%                    , {<<"id">>, 3}
+%%                    ]}
+%%                ]},
 %%      neo4j:batch(Neo, Payload).
 %%
 -spec batch(neo4j_root(), proplists:proplist()) -> proplists:proplist() | {error, term()}.
 batch(Neo, Request) ->
-  {_, URI} = lists:keyfind(<<"batch">>, 1, Neo),
-  Payload = jsonx:encode(Request),
+  {_, URI} = find(<<"batch">>, 1, Neo),
+  Payload = jiffy:encode(Request),
   create(URI, Payload).
 
 
@@ -875,8 +883,8 @@ batch(Neo, Request) ->
 %%
 -spec create_node_index(neo4j_root(), binary()) -> neo4j_index() | {error, term()}.
 create_node_index(Neo, Name) ->
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
-  Payload = jsonx:encode([{<<"name">>, Name}]),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
+  Payload = jiffy:encode({[{<<"name">>, Name}]}),
   create(URI, Payload).
 
 %%
@@ -884,11 +892,10 @@ create_node_index(Neo, Name) ->
 %%
 -spec create_node_index(neo4j_root(), binary(), proplists:proplist()) -> neo4j_index() | {error, term()}.
 create_node_index(Neo, Name, Config) ->
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
-  Payload = jsonx:encode([ {<<"name">>, Name}
-                         , {<<"config">>, Config}
-                         ]
-                        ),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
+  Payload = jiffy:encode({[ {<<"name">>, Name}
+                          , {<<"config">>, Config}
+                          ]}),
   create(URI, Payload).
 
 %%
@@ -896,7 +903,7 @@ create_node_index(Neo, Name, Config) ->
 %%
 -spec delete_node_index(neo4j_root(), binary()) -> ok | {error, term()}.
 delete_node_index(Neo, Name) ->
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   delete(<<URI/binary, "/", Name/binary>>).
 
 %%
@@ -904,7 +911,7 @@ delete_node_index(Neo, Name) ->
 %%
 -spec node_indices(neo4j_root()) -> [{binary(), neo4j_index()}] | {error, term()}.
 node_indices(Neo) ->
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   list(retrieve(URI)).
 
 %%
@@ -917,13 +924,12 @@ node_indices(Neo) ->
                        , Value::binary
                        ) -> term() | {error, term()}.
 add_node_to_index(Neo, Node, Index, Key, Value) ->
-  {_, NodeURI} = lists:keyfind(<<"self">>, 1, Node),
-  Payload = jsonx:encode([ {<<"uri">>, NodeURI}
-                         , {<<"key">>, Key}
-                         , {<<"value">>, Value}
-                         ]
-                        ),
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, NodeURI} = find(<<"self">>, 1, Node),
+  Payload = jiffy:encode({[ {<<"uri">>, NodeURI}
+                          , {<<"key">>, Key}
+                          , {<<"value">>, Value}
+                          ]}),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   create(<<URI/binary, "/", Index/binary>>, Payload).
 
 %%
@@ -938,13 +944,12 @@ add_node_to_index(Neo, Node, Index, Key, Value) ->
                        , Uniqueness::binary()
                        ) -> term() | {error, term()}.
 add_node_to_index(Neo, Node, Index, Key, Value, Uniqieness) ->
-  {_, NodeURI} = lists:keyfind(<<"self">>, 1, Node),
-  Payload = jsonx:encode([ {<<"uri">>, NodeURI}
-                         , {<<"key">>, Key}
-                         , {<<"value">>, Value}
-                         ]
-                        ),
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, NodeURI} = find(<<"self">>, 1, Node),
+  Payload = jiffy:encode({[ {<<"uri">>, NodeURI}
+                          , {<<"key">>, Key}
+                          , {<<"value">>, Value}
+                          ]}),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqieness/binary>>, Payload).
 
 
@@ -954,7 +959,7 @@ add_node_to_index(Neo, Node, Index, Key, Value, Uniqieness) ->
 -spec remove_from_node_index(neo4j_root(), neo4j_node(), binary()) -> term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index) ->
   Id = id(Node),
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   delete(<<URI/binary, "/", Index/binary, "/", Id/binary>>).
 
 %%
@@ -963,7 +968,7 @@ remove_from_node_index(Neo, Node, Index) ->
 -spec remove_from_node_index(neo4j_root(), neo4j_node(), binary(), binary()) -> term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index, Key) ->
   Id = id(Node),
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Id/binary>>).
 
 %%
@@ -972,7 +977,7 @@ remove_from_node_index(Neo, Node, Index, Key) ->
 -spec remove_from_node_index(neo4j_root(), neo4j_node(), binary(), binary(), binary()) -> term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index, Key, Value) ->
   Id = id(Node),
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary, "/", Id/binary>>).
 
 %%
@@ -980,7 +985,7 @@ remove_from_node_index(Neo, Node, Index, Key, Value) ->
 %%
 -spec find_node_exact(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
 find_node_exact(Neo, Index, Key, Value) ->
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary>>).
 
 %%
@@ -988,7 +993,7 @@ find_node_exact(Neo, Index, Key, Value) ->
 %%
 -spec find_node_query(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
 find_node_query(Neo, Index, Query) ->
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>).
 
 %%
@@ -996,7 +1001,7 @@ find_node_query(Neo, Index, Query) ->
 %%
 -spec find_node_query(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
 find_node_query(Neo, Index, Query, Ordering) ->
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary, "&ordering=", Ordering/binary>>).
 
 %%_* Legacy relationship indices ------------------------------------------------------
@@ -1006,8 +1011,8 @@ find_node_query(Neo, Index, Query, Ordering) ->
 %%
 -spec create_relationship_index(neo4j_root(), binary()) -> neo4j_index() | {error, term()}.
 create_relationship_index(Neo, Name) ->
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
-  Payload = jsonx:encode([{<<"name">>, Name}]),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
+  Payload = jiffy:encode({[{<<"name">>, Name}]}),
   create(URI, Payload).
 
 %%
@@ -1015,11 +1020,10 @@ create_relationship_index(Neo, Name) ->
 %%
 -spec create_relationship_index(neo4j_root(), binary(), proplists:proplist()) -> neo4j_index() | {error, term()}.
 create_relationship_index(Neo, Name, Config) ->
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
-  Payload = jsonx:encode([ {<<"name">>, Name}
-                         , {<<"config">>, Config}
-                         ]
-                        ),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
+  Payload = jiffy:encode({[ {<<"name">>, Name}
+                          , {<<"config">>, Config}
+                          ]}),
   create(URI, Payload).
 
 %%
@@ -1027,7 +1031,7 @@ create_relationship_index(Neo, Name, Config) ->
 %%
 -spec delete_relationship_index(neo4j_root(), binary()) -> ok | {error, term()}.
 delete_relationship_index(Neo, Name) ->
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   delete(<<URI/binary, "/", Name/binary>>).
 
 %%
@@ -1035,7 +1039,7 @@ delete_relationship_index(Neo, Name) ->
 %%
 -spec relationship_indices(neo4j_root()) -> [{binary(), neo4j_index()}] | {error, term()}.
 relationship_indices(Neo) ->
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   list(retrieve(URI)).
 
 %%
@@ -1048,13 +1052,12 @@ relationship_indices(Neo) ->
                                , Value::binary
                                ) -> term() | {error, term()}.
 add_relationship_to_index(Neo, Relationship, Index, Key, Value) ->
-  {_, NodeURI} = lists:keyfind(<<"self">>, 1, Relationship),
-  Payload = jsonx:encode([ {<<"uri">>, NodeURI}
-                         , {<<"key">>, Key}
-                         , {<<"value">>, Value}
-                         ]
-                        ),
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, NodeURI} = find(<<"self">>, 1, Relationship),
+  Payload = jiffy:encode({[ {<<"uri">>, NodeURI}
+                          , {<<"key">>, Key}
+                          , {<<"value">>, Value}
+                          ]}),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   create(<<URI/binary, "/", Index/binary>>, Payload).
 
 %%
@@ -1069,13 +1072,12 @@ add_relationship_to_index(Neo, Relationship, Index, Key, Value) ->
                                , Uniqueness::binary()
                                ) -> term() | {error, term()}.
 add_relationship_to_index(Neo, Relationship, Index, Key, Value, Uniqieness) ->
-  {_, NodeURI} = lists:keyfind(<<"self">>, 1, Relationship),
-  Payload = jsonx:encode([ {<<"uri">>, NodeURI}
-                         , {<<"key">>, Key}
-                         , {<<"value">>, Value}
-                         ]
-                        ),
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, NodeURI} = find(<<"self">>, 1, Relationship),
+  Payload = jiffy:encode({[ {<<"uri">>, NodeURI}
+                          , {<<"key">>, Key}
+                          , {<<"value">>, Value}
+                          ]}),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqieness/binary>>, Payload).
 
 
@@ -1085,7 +1087,7 @@ add_relationship_to_index(Neo, Relationship, Index, Key, Value, Uniqieness) ->
 -spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary()) -> term() | {error, term()}.
 remove_from_relationship_index(Neo, Relationship, Index) ->
   Id = id(Relationship),
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   delete(<<URI/binary, "/", Index/binary, "/", Id/binary>>).
 
 %%
@@ -1094,7 +1096,7 @@ remove_from_relationship_index(Neo, Relationship, Index) ->
 -spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary(), binary()) -> term() | {error, term()}.
 remove_from_relationship_index(Neo, Relationship, Index, Key) ->
   Id = id(Relationship),
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Id/binary>>).
 
 %%
@@ -1103,7 +1105,7 @@ remove_from_relationship_index(Neo, Relationship, Index, Key) ->
 -spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary(), binary(), binary()) -> term() | {error, term()}.
 remove_from_relationship_index(Neo, Relationship, Index, Key, Value) ->
   Id = id(Relationship),
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary, "/", Id/binary>>).
 
 %%
@@ -1111,7 +1113,7 @@ remove_from_relationship_index(Neo, Relationship, Index, Key, Value) ->
 %%
 -spec find_relationship_exact(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
 find_relationship_exact(Neo, Index, Key, Value) ->
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary>>).
 
 %%
@@ -1119,7 +1121,7 @@ find_relationship_exact(Neo, Index, Key, Value) ->
 %%
 -spec find_relationship_query(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
 find_relationship_query(Neo, Index, Query) ->
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>).
 
 %%
@@ -1127,7 +1129,7 @@ find_relationship_query(Neo, Index, Query) ->
 %%
 -spec find_relationship_query(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
 find_relationship_query(Neo, Index, Query, Ordering) ->
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary, "&ordering=", Ordering/binary>>).
 
 %%_* Uniqueness (legacy) -------------------------------------------------------
@@ -1146,11 +1148,11 @@ find_relationship_query(Neo, Index, Query, Ordering) ->
                         , binary()
                         ) -> neo4j_node() | {error, term()}.
 unique_create_node(Neo, Props, Index, Key, Value, Uniqueness) ->
-  {_, URI} = lists:keyfind(<<"node_index">>, 1, Neo),
-  Payload = jsonx:encode([ {<<"key">>, Key}
-                         , {<<"value">>, Value}
-                         , {<<"properties">>, Props}
-                         ]),
+  {_, URI} = find(<<"node_index">>, 1, Neo),
+  Payload = jiffy:encode({[ {<<"key">>, Key}
+                          , {<<"value">>, Value}
+                          , {<<"properties">>, Props}
+                          ]}),
   create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqueness/binary>>, Payload).
 
 %%
@@ -1169,15 +1171,15 @@ unique_create_node(Neo, Props, Index, Key, Value, Uniqueness) ->
                                 , binary()
                                 ) -> neo4j_relationship() | {error, term()}.
 unique_create_relationship(Neo, StartNode, EndNode, Type, Index, Key, Value, Uniqueness) ->
-  {_, URI} = lists:keyfind(<<"relationship_index">>, 1, Neo),
-  {_, StartUri} = lists:keyfind(<<"self">>, 1, StartNode),
-  {_, EndUri} = lists:keyfind(<<"self">>, 1, EndNode),
-  Payload = jsonx:encode([ {<<"key">>, Key}
-                         , {<<"value">>, Value}
-                         , {<<"type">>, Type}
-                         , {<<"start">>, StartUri}
-                         , {<<"end">>, EndUri}
-                         ]),
+  {_, URI} = find(<<"relationship_index">>, 1, Neo),
+  {_, StartUri} = find(<<"self">>, 1, StartNode),
+  {_, EndUri} = find(<<"self">>, 1, EndNode),
+  Payload = jiffy:encode({[ {<<"key">>, Key}
+                          , {<<"value">>, Value}
+                          , {<<"type">>, Type}
+                          , {<<"start">>, StartUri}
+                          , {<<"end">>, EndUri}
+                          ]}),
   create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqueness/binary>>, Payload).
 
 %%_* Legacy auto indices -------------------------------------------------------
@@ -1187,7 +1189,7 @@ unique_create_relationship(Neo, StartNode, EndNode, Type, Index, Key, Value, Uni
 %%
 -spec find_node_auto_exact(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
 find_node_auto_exact(Neo, Key, Value) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/node/", Key/binary, "/", Value/binary>>).
 
 %%
@@ -1195,7 +1197,7 @@ find_node_auto_exact(Neo, Key, Value) ->
 %%
 -spec find_node_auto_query(neo4j_root(), binary()) -> term() | {error, term()}.
 find_node_auto_query(Neo, Query) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/node?query=", Query/binary>>).
 
 %%
@@ -1203,7 +1205,7 @@ find_node_auto_query(Neo, Query) ->
 %%
 -spec find_relationship_auto_exact(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
 find_relationship_auto_exact(Neo, Key, Value) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/relationship/", Key/binary, "/", Value/binary>>).
 
 %%
@@ -1211,7 +1213,7 @@ find_relationship_auto_exact(Neo, Key, Value) ->
 %%
 -spec find_relationship_auto_query(neo4j_root(), binary()) -> term() | {error, term()}.
 find_relationship_auto_query(Neo, Query) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/relationship?query=", Query/binary>>).
 
 
@@ -1236,7 +1238,7 @@ create_relationship_auto_index(Neo, Config) ->
 %%
 -spec get_node_auto_index_status(neo4j_root()) -> boolean() | {error, term()}.
 get_node_auto_index_status(Neo) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/node/status">>).
 
 %%
@@ -1244,7 +1246,7 @@ get_node_auto_index_status(Neo) ->
 %%
 -spec get_relationship_auto_index_status(neo4j_root()) -> boolean() | {error, term()}.
 get_relationship_auto_index_status(Neo) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/relationship/status">>).
 
 
@@ -1253,16 +1255,16 @@ get_relationship_auto_index_status(Neo) ->
 %%
 -spec set_node_auto_index_status(neo4j_root(), boolean()) -> ok | {error, term()}.
 set_node_auto_index_status(Neo, Status) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
-  update(<<URI/binary, "index/auto/node/status">>, jsonx:encode(Status)).
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
+  update(<<URI/binary, "index/auto/node/status">>, jiffy:encode(Status)).
 
 %%
 %% @doc
 %%
 -spec set_relationship_auto_index_status(neo4j_root(), boolean()) -> ok | {error, term()}.
 set_relationship_auto_index_status(Neo, Status) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
-  update(<<URI/binary, "index/auto/relationship/status">>, jsonx:encode(Status)).
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
+  update(<<URI/binary, "index/auto/relationship/status">>, jiffy:encode(Status)).
 
 
 %%
@@ -1270,7 +1272,7 @@ set_relationship_auto_index_status(Neo, Status) ->
 %%
 -spec get_node_auto_index_properties(neo4j_root()) -> boolean() | {error, term()}.
 get_node_auto_index_properties(Neo) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/node/properties">>).
 
 %%
@@ -1278,7 +1280,7 @@ get_node_auto_index_properties(Neo) ->
 %%
 -spec get_relationship_auto_index_properties(neo4j_root()) -> boolean() | {error, term()}.
 get_relationship_auto_index_properties(Neo) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/relationship/properties">>).
 
 
@@ -1287,16 +1289,16 @@ get_relationship_auto_index_properties(Neo) ->
 %%
 -spec add_node_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
 add_node_auto_index_property(Neo, Property) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
-  create(<<URI/binary, "index/auto/node/properties">>, jsonx:encode(Property)).
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
+  create(<<URI/binary, "index/auto/node/properties">>, jiffy:encode(Property)).
 
 %%
 %% @doc
 %%
 -spec add_relationship_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
 add_relationship_auto_index_property(Neo, Property) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
-  create(<<URI/binary, "index/auto/relationship/properties">>, jsonx:encode(Property)).
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
+  create(<<URI/binary, "index/auto/relationship/properties">>, jiffy:encode(Property)).
 
 
 %%
@@ -1304,7 +1306,7 @@ add_relationship_auto_index_property(Neo, Property) ->
 %%
 -spec remove_node_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
 remove_node_auto_index_property(Neo, Property) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   delete(<<URI/binary, "index/auto/node/properties/", Property/binary>>).
 
 %%
@@ -1312,7 +1314,7 @@ remove_node_auto_index_property(Neo, Property) ->
 %%
 -spec remove_relationship_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
 remove_relationship_auto_index_property(Neo, Property) ->
-  {_, URI} = lists:keyfind(<<"base_uri">>, 1, Neo),
+  {_, URI} = find(<<"base_uri">>, 1, Neo),
   delete(<<URI/binary, "index/auto/relationship/properties/", Property/binary>>).
 
 
@@ -1331,19 +1333,18 @@ get_root(BaseURI) when is_binary(BaseURI) ->
       {error, {non_200_response, StatusCode, Body}};
     {ok, _, _, Client} ->
       {ok, Body} = hackney:body(Client),
-      case jsonx:decode(Body, [{format, proplist}]) of
+      case jiffy:decode(Body) of
         {error, E1, E2} -> {error, {E1, E2}};
-        Root          ->
+        Root            ->
           %% we add some links as these are not returned by neo4j
-          %% an we wouldn't want to recreate them over and over again
-          [ {<<"base_uri">>, BaseURI}
-          , {<<"relationship">>, <<BaseURI/binary, "relationship">>}
-          , {<<"label">>, <<BaseURI/binary, "label">>}
-          , {<<"labels">>, <<BaseURI/binary, "labels">>}
-          , {<<"index">>, <<BaseURI/binary, "schema/index">>}
-          , {<<"constraint">>, <<BaseURI/binary, "schema/constraint">>}
-            | Root
-          ]
+          %% and we wouldn't want to recreate them over and over again
+          prepend([ {<<"base_uri">>, BaseURI}
+                  , {<<"relationship">>, <<BaseURI/binary, "relationship">>}
+                  , {<<"label">>, <<BaseURI/binary, "label">>}
+                  , {<<"labels">>, <<BaseURI/binary, "labels">>}
+                  , {<<"index">>, <<BaseURI/binary, "schema/index">>}
+                  , {<<"constraint">>, <<BaseURI/binary, "schema/constraint">>}]
+                 , Root)
       end
   end.
 
@@ -1353,14 +1354,14 @@ create(URI) ->
     {error, Reason} -> {error, Reason};
     {ok, 200, _, Client} ->
       {ok, Body} = hackney:body(Client),
-      jsonx:decode(Body, [{format, proplist}]);
+      jiffy:decode(Body);
     {ok, 201, Headers, Client} ->
       {ok, Body} = hackney:body(Client),
-      case lists:keyfind(<<"Location">>, 1, Headers) of
-        {_, Location} -> [ {<<"self">>, Location}
-                         | jsonx:decode(Body, [{format, proplist}])
-                         ];
-        _             -> jsonx:decode(Body, [{format, proplist}])
+      case find(<<"Location">>, 1, Headers) of
+        {_, Location} ->
+          prepend({<<"self">>, Location}, jiffy:decode(Body));
+        _             ->
+          jiffy:decode(Body)
       end;
     {ok, 204, _, _} ->
       ok;
@@ -1374,14 +1375,14 @@ create(URI, Payload) ->
     {error, Reason} -> {error, Reason};
     {ok, 200, _, Client} ->
       {ok, Body} = hackney:body(Client),
-      jsonx:decode(Body, [{format, proplist}]);
+      jiffy:decode(Body);
     {ok, 201, Headers, Client} ->
       {ok, Body} = hackney:body(Client),
-      case lists:keyfind(<<"Location">>, 1, Headers) of
-        {_, Location} -> [ {<<"self">>, Location}
-                         | jsonx:decode(Body, [{format, proplist}])
-                         ];
-        _             -> jsonx:decode(Body, [{format, proplist}])
+      case find(<<"Location">>, 1, Headers) of
+        {_, Location} ->
+          prepend({<<"self">>, Location}, jiffy:decode(Body));
+        _             ->
+          jiffy:decode(Body)
       end;
     {ok, 204, _, _} ->
       ok;
@@ -1397,7 +1398,7 @@ retrieve(URI) ->
       {error, not_found};
     {ok, 200, _, Client} ->
       {ok, Body} = hackney:body(Client),
-      jsonx:decode(Body, [{format, proplist}]);
+      jiffy:decode(Body);
     {ok, 204, _, _} ->
       <<>>;
     {ok, Status, _, Client} ->
@@ -1422,7 +1423,7 @@ delete(URI) ->
       ok;
     {ok, 200, _, Client} ->
       {ok, Body} = hackney:body(Client),
-      jsonx:decode(Body, [{format, proplist}]);
+      jiffy:decode(Body);
     {ok, Status, _, Client} ->
       process_response(URI, Status, Client)
   end.
@@ -1432,13 +1433,13 @@ delete(URI) ->
 %%
 -spec get_relationship_by_direction(neo4j_node(), all | in | out) -> [neo4j_relationship()] | {error, term()}.
 get_relationship_by_direction(Node, all) ->
-  {_, URI} = lists:keyfind(<<"all_relationships">>, 1, Node),
+  {_, URI} = find(<<"all_relationships">>, 1, Node),
   retrieve(URI);
 get_relationship_by_direction(Node, in) ->
-  {_, URI} = lists:keyfind(<<"incoming_relationships">>, 1, Node),
+  {_, URI} = find(<<"incoming_relationships">>, 1, Node),
   retrieve(URI);
 get_relationship_by_direction(Node, out) ->
-  {_, URI} = lists:keyfind(<<"outgoing_relationships">>, 1, Node),
+  {_, URI} = find(<<"outgoing_relationships">>, 1, Node),
   retrieve(URI);
 get_relationship_by_direction(_, _) ->
   {error, invalid_relationship_direction}.
@@ -1452,13 +1453,13 @@ get_relationship_by_type(Node, Type) ->
                               , all | in | out
                               ) -> [neo4j_relationship()] | {error, term()}.
 get_relationship_by_type(Node, Type, all) ->
-  {_, URI} = lists:keyfind(<<"all_typed_relationships">>, 1, Node),
+  {_, URI} = find(<<"all_typed_relationships">>, 1, Node),
   retrieve(replace_param(URI, <<"-list|&|types">>, Type));
 get_relationship_by_type(Node, Type, in) ->
-  {_, URI} = lists:keyfind(<<"incoming_typed_relationships">>, 1, Node),
+  {_, URI} = find(<<"incoming_typed_relationships">>, 1, Node),
   retrieve(replace_param(URI, <<"-list|&|types">>, Type));
 get_relationship_by_type(Node, Type, out) ->
-  {_, URI} = lists:keyfind(<<"outgoing_typed_relationships">>, 1, Node),
+  {_, URI} = find(<<"outgoing_typed_relationships">>, 1, Node),
   retrieve(replace_param(URI, <<"-list|&|types">>, Type));
 get_relationship_by_type(_, _, _) ->
   {error, invalid_relationship_direction_or_type}.
@@ -1478,10 +1479,10 @@ get_relationship_by_type(_, _, _) ->
 %%
 -spec encode_transaction_query(proplists:proplist()) -> binary().
 encode_transaction_query(<<"">>) ->
-  jsonx:encode([{<<"statements">>, []}]);
+  jiffy:encode({[{<<"statements">>, []}]});
 encode_transaction_query(Q) ->
   Statements = [prepare_statement(Query) || Query <- Q],
-  jsonx:encode([{<<"statements">>, Statements}]).
+  jiffy:encode({[{<<"statements">>, Statements}]}).
 
 -spec prepare_statement(binary()) -> proplists:proplist();
                        ({binary()}) -> proplists:proplist();
@@ -1494,20 +1495,20 @@ prepare_statement({Q}) ->
 prepare_statement({Q, P}) ->
   prepare_statement({Q, P, []});
 prepare_statement({Query, [], []}) ->
-  [{<<"statement">>, Query}];
+  {[{<<"statement">>, Query}]};
 prepare_statement({Query, Params, []}) ->
-  [{<<"statement">>, Query}
-  , {<<"parameters">>, Params}
-  ];
+  {[ {<<"statement">>, Query}
+   , {<<"parameters">>, Params}
+   ]};
 prepare_statement({Query, [], Formats}) ->
-  [{<<"statement">>, Query}
-  , {<<"resultDataContents">>, Formats}
-  ];
+  {[ {<<"statement">>, Query}
+   , {<<"resultDataContents">>, Formats}
+   ]};
 prepare_statement({Query, Params, Formats}) ->
-  [{<<"statement">>, Query}
-  , {<<"parameters">>, Params}
-  , {<<"resultDataContents">>, Formats}
-  ].
+  {[ {<<"statement">>, Query}
+   , {<<"parameters">>, Params}
+   , {<<"resultDataContents">>, Formats}
+   ]}.
 
 %%_* Helpers ===================================================================
 
@@ -1553,10 +1554,10 @@ is_uri(_)                            -> false.
 
 -spec id(proplists:proplist()) -> binary().
 id(Obj) ->
-  {_, URI} = lists:keyfind(<<"self">>, 1, Obj),
+  {_, URI} = find(<<"self">>, 1, Obj),
   lists:last(binary:split(URI, <<"/">>, [global])).
 
--spec process_response(integer(), binary(), hackney:client()) -> {error, term()}.
+-spec process_response(binary(), integer(), term()) -> {error, term()}.
 process_response(URI, 404, _Client) ->
   {error, {not_found, URI}};
 process_response(URI, 405, _Client) ->
@@ -1565,7 +1566,7 @@ process_response(URI, Status, Client) ->
   {ok, Body} = hackney:body(Client),
   case Body of
     <<>> -> {error, {Status, URI, <<>>}};
-    _ -> {error, {Status, URI, jsonx:decode(Body, [{format, proplist}])}}
+    _ -> {error, {Status, URI, jiffy:decode(Body)}}
   end.
 
 -spec list(list() | binary()) -> list().
@@ -1587,3 +1588,16 @@ headers() ->
   [ {<<"Accept">>, <<"application/json; charset=UTF-8">>}
   , {<<"Content-Type">>, <<"application/json">>}
   ].
+
+
+find(Key, Pos, {L}) when is_list(L) ->
+  lists:keyfind(Key, Pos, L);
+find(Key, Pos, L) when is_list(L) ->
+  lists:keyfind(Key, Pos, L).
+
+prepend(Items, {Data}) when is_list(Data), is_list(Items) ->
+  {Items ++ Data};
+prepend(Item, {Data}) when is_list(Data) ->
+  {[Item | Data]};
+prepend(Item, Data) when is_list(Data) ->
+  [Item | Data].

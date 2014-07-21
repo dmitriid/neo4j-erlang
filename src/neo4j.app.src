@@ -1,10 +1,12 @@
 { application, neo4j
 , [ {description, "Neo4j REST API client"}
-  , {vsn, "1"}
+  , {vsn, "0.2"}
   , {registered, []}
   , {applications, [ kernel
                    , stdlib
                    , hackney
+                   , jiffy
                    ]}
   , {env, []}
+  , {modules, [neo4j]}
  ]}.

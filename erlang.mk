@@ -1,4 +1,4 @@
-# Copyright (c) 2013, Loïc Hoguin <essen@ninenines.eu>
+# Copyright (c) 2013-2014, Loïc Hoguin <essen@ninenines.eu>
 #
 # Permission to use, copy, modify, and/or distribute this software for any
 # purpose with or without fee is hereby granted, provided that the above
@@ -21,10 +21,10 @@ PROJECT ?= $(notdir $(CURDIR))
 PKG_FILE ?= $(CURDIR)/.erlang.mk.packages.v1
 export PKG_FILE
 
-PKG_FILE_URL ?= https://raw.github.com/extend/erlang.mk/master/packages.v1.tsv
+PKG_FILE_URL ?= https://raw.githubusercontent.com/extend/erlang.mk/master/packages.v1.tsv
 
 define get_pkg_file
-	wget -O $(PKG_FILE) $(PKG_FILE_URL) || rm $(PKG_FILE)
+	wget --no-check-certificate -O $(PKG_FILE) $(PKG_FILE_URL) || rm $(PKG_FILE)
 endef
 
 # Verbosity and tweaks.
@@ -58,7 +58,13 @@ ifneq ($(wildcard $(RELX_CONFIG)),)
 RELX ?= $(CURDIR)/relx
 export RELX
 
-RELX_URL ?= https://github.com/erlware/relx/releases/download/0.4.0/relx
+RELX_URL ?= https://github.com/erlware/relx/releases/download/v1.0.2/relx
+RELX_OPTS ?=
+RELX_OUTPUT_DIR ?= _rel
+
+ifneq ($(firstword $(subst -o,,$(RELX_OPTS))),)
+	RELX_OUTPUT_DIR = $(firstword $(subst -o,,$(RELX_OPTS)))
+endif
 
 define get_relx
 	wget -O $(RELX) $(RELX_URL) || rm $(RELX)
@@ -66,13 +72,13 @@ define get_relx
 endef
 
 rel: clean-rel all $(RELX)
-	@$(RELX)
+	@$(RELX) -c $(RELX_CONFIG) $(RELX_OPTS)
 
 $(RELX):
 	@$(call get_relx)
 
 clean-rel:
-	@rm -rf _rel
+	$(gen_verbose) rm -rf $(RELX_OUTPUT_DIR)
 
 endif
 
@@ -89,7 +95,13 @@ ALL_TEST_DEPS_DIRS = $(addprefix $(DEPS_DIR)/,$(TEST_DEPS))
 
 # Application.
 
-ERL_LIBS ?= $(DEPS_DIR)
+ifeq ($(filter $(DEPS_DIR),$(subst :, ,$(ERL_LIBS))),)
+ifeq ($(ERL_LIBS),)
+	ERL_LIBS = $(DEPS_DIR)
+else
+	ERL_LIBS := $(ERL_LIBS):$(DEPS_DIR)
+endif
+endif
 export ERL_LIBS
 
 ERLC_OPTS ?= -Werror +debug_info +warn_export_all +warn_export_vars \
@@ -104,9 +116,9 @@ clean-all: clean clean-deps clean-docs
 
 app: ebin/$(PROJECT).app
 	$(eval MODULES := $(shell find ebin -type f -name \*.beam \
-		| sed 's/ebin\///;s/\.beam/,/' | sed '$$s/.$$//'))
+		| sed "s/ebin\//'/;s/\.beam/',/" | sed '$$s/.$$//'))
 	$(appsrc_verbose) cat src/$(PROJECT).app.src \
-		| sed 's/{modules,\s*\[\]}/{modules, \[$(MODULES)\]}/' \
+		| sed "s/{modules,[[:space:]]*\[\]}/{modules, \[$(MODULES)\]}/" \
 		> ebin/$(PROJECT).app
 
 define compile_erl
@@ -125,7 +137,7 @@ define compile_dtl
 		Compile = fun(F) -> \
 			Module = list_to_atom( \
 				string:to_lower(filename:basename(F, ".dtl")) ++ "_dtl"), \
-			erlydtl_compiler:compile(F, Module, [{out_dir, "ebin/"}]) \
+			erlydtl:compile(F, Module, [{out_dir, "ebin/"}]) \
 		end, \
 		_ = [Compile(F) || F <- string:tokens("$(1)", " ")], \
 		init:stop()'
@@ -202,57 +214,62 @@ clean-docs:
 
 $(foreach dep,$(TEST_DEPS),$(eval $(call dep_target,$(dep))))
 
+TEST_ERLC_OPTS ?= +debug_info +warn_export_vars +warn_shadow_vars +warn_obsolete_guard
+TEST_ERLC_OPTS += -DTEST=1 -DEXTRA=1 +'{parse_transform, eunit_autoexport}'
+
 build-test-deps: $(ALL_TEST_DEPS_DIRS)
 	@for dep in $(ALL_TEST_DEPS_DIRS) ; do $(MAKE) -C $$dep; done
 
 build-tests: build-test-deps
-	$(gen_verbose) erlc -v $(ERLC_OPTS) -o test/ \
+	$(gen_verbose) erlc -v $(TEST_ERLC_OPTS) -o test/ \
 		$(wildcard test/*.erl test/*/*.erl) -pa ebin/
 
+CT_OPTS ?=
 CT_RUN = ct_run \
 	-no_auto_compile \
 	-noshell \
 	-pa $(realpath ebin) $(DEPS_DIR)/*/ebin \
 	-dir test \
 	-logdir logs
-#	-cover test/cover.spec
 
 CT_SUITES ?=
 
 define test_target
-test_$(1): ERLC_OPTS += -DTEST=1 +'{parse_transform, eunit_autoexport}'
+test_$(1): ERLC_OPTS = $(TEST_ERLC_OPTS)
 test_$(1): clean deps app build-tests
 	@if [ -d "test" ] ; \
 	then \
 		mkdir -p logs/ ; \
-		$(CT_RUN) -suite $(addsuffix _SUITE,$(1)) ; \
+		$(CT_RUN) -suite $(addsuffix _SUITE,$(1)) $(CT_OPTS) ; \
 	fi
 	$(gen_verbose) rm -f test/*.beam
 endef
 
 $(foreach test,$(CT_SUITES),$(eval $(call test_target,$(test))))
 
-tests: ERLC_OPTS += -DTEST=1 +'{parse_transform, eunit_autoexport}'
+tests: ERLC_OPTS = $(TEST_ERLC_OPTS)
 tests: clean deps app build-tests
 	@if [ -d "test" ] ; \
 	then \
 		mkdir -p logs/ ; \
-		$(CT_RUN) -suite $(addsuffix _SUITE,$(CT_SUITES)) ; \
+		$(CT_RUN) -suite $(addsuffix _SUITE,$(CT_SUITES)) $(CT_OPTS) ; \
 	fi
 	$(gen_verbose) rm -f test/*.beam
 
 # Dialyzer.
+
+DIALYZER_PLT ?= $(CURDIR)/.$(PROJECT).plt
+export DIALYZER_PLT
 
 PLT_APPS ?=
 DIALYZER_OPTS ?= -Werror_handling -Wrace_conditions \
 	-Wunmatched_returns # -Wunderspecs
 
 build-plt: deps app
-	@dialyzer --build_plt --output_plt .$(PROJECT).plt \
-		--apps erts kernel stdlib $(PLT_APPS) $(ALL_DEPS_DIRS)
+	@dialyzer --build_plt --apps erts kernel stdlib $(PLT_APPS) $(ALL_DEPS_DIRS)
 
 dialyze:
-	@dialyzer --src src --plt .$(PROJECT).plt --no_native $(DIALYZER_OPTS)
+	@dialyzer --src src --no_native $(DIALYZER_OPTS)
 
 # Packages.
 

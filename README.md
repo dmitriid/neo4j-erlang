@@ -2,11 +2,19 @@
 
 This is a lightweight wrapper for [Neo4j REST API](http://docs.neo4j.org/chunked/stable/rest-api.html).
 
+### Current version: 0.2
+
+*Breaking changes from [0.1](https://github.com/dmitriid/neo4j-erlang/tree/0.1)*
+
+* [jsx](https://github.com/iskra/jsx) has been replaced by [jiffy](https://github.com/davisp/jiffy).
+This means that you now absolutely have to use [EEP0018](http://www.erlang.org/eeps/eep-0018.html) (refer to [jiffy documentation](https://github.com/davisp/jiffy) for a more concise description.
+This readme and all comments throughout the code have been updated to reflect this change.
+
 ## What?
 
 - Implements all of Neo4J 2.0.0's REST API as referenced [here](http://docs.neo4j.org/chunked/stable/rest-api.html) with one caveat:
  - Does *not* implement [streaming API](http://docs.neo4j.org/chunked/stable/rest-api-streaming.html)
-- Uses [jsonx](https://github.com/iskra/jsonx) for extra fast JSON parsing, albeit in `{format, proplist}` mode
+- Uses [jiffy](https://github.com/davisp/jiffy) for JSON
 - Uses [hackney](https://github.com/benoitc/hackney) for http queries
  - Does *not* support HTTPS (yet?)
 
@@ -19,14 +27,16 @@ This is a lightweight wrapper for [Neo4j REST API](http://docs.neo4j.org/chunked
 Neo = neo4j:connect([{base_uri, <<"http://localhost:7474/db/data/">>}]),
 
 StartNode = neo4j:get_node(Neo, 101),
-EndNode = neo4j:create_node(Neo, [{<<"prop1">>, <<"key1">>}]),
+EndNode = neo4j:create_node(Neo, {[{<<"prop1">>, <<"key1">>}]}),
 
 Relationship1 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>),
-Relationship2 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>, [{<<"prop2">>, <<"value2">>}]),
+Relationship2 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>, {[{<<"prop2">>, <<"value2">>}]}),
 
 ok = neo4j:delete_relationship(Relationship1).
 
 ```
+
+Read on for more details, or refer to comments in [code](blob/master/src/neo4j.erl) or to the [test suite](blob/master/test/neo4j_SUITE.erl).
 
 ### Details
 
@@ -34,12 +44,13 @@ The wrapper follows [Neo4j's REST API](http://docs.neo4j.org/chunked/stable/rest
 
 ```erlang
 %%
-%% http://docs.neo4j.org/chunked/stable/rest-api-nodes.html#rest-api-create-node
+%% http://docs.neo4j.org/chunked/stable/rest-api-nodes.html#rest-api-create-node-with-properties
 %%
--spec create_node(neo4j_root()) -> neo4j_node() | {error, term()}.
-create_node(Neo) ->
-  {_, URI} = lists:keyfind(<<"node">>, 1, Neo),
-  create(URI).
+-spec create_node(neo4j_root(), proplists:proplist()) -> neo4j_node() | {error, term()}.
+create_node(Neo, Props) ->
+  {_, URI} = find(<<"node">>, 1, Neo),
+  Payload = jiffy:encode(Props),
+  create(URI, Payload).
 ```
 
 That link will tell you exactly what's going on and what you should expect.
@@ -54,7 +65,7 @@ There are two types of errors the wrapper returns:
 {error,not_found}
 ```
 
-- `{error, {integer(), proplists:proplist()}` — errors returned by Neo4j. Example of such an error (using [unique indexing](http://docs.neo4j.org/chunked/stable/rest-api-unique-indexes.html#rest-api-create-a-unique-node-or-return-fail-create)):
+- `{error, {Status::integer(), URI::binary(), Error::proplists:proplist()}` — errors returned by Neo4j. Example of such an error (using [unique indexing](http://docs.neo4j.org/chunked/stable/rest-api-unique-indexes.html#rest-api-create-a-unique-node-or-return-fail-create)):
 
 ```erlang
 > neo4j:unique_create_node(Neo, [{<<"prop">>, <<"val">>}], <<"index">>, <<"key">>, <<"value">>, <<"create_or_fail">>).
@@ -85,27 +96,27 @@ If an operation returns a `HTTP 201 Created` with a `Location` header, the wrapp
 
 ```erlang
 > Node = neo4j:get_node(Neo, 101).
-> Body = [ {<<"order">>, <<"breadth_first">>}
-         , {<<"uniqueness">>, <<"none">>}
-         , {<<"return_filter">>, [ {<<"language">>, <<"builtin">>}
-                                 , {<<"name">>, <<"all">>}
-                                 ]
-           }
-         ].
+> Body = {[ {<<"order">>, <<"breadth_first">>}
+          , {<<"uniqueness">>, <<"none">>}
+          , {<<"return_filter">>, {[ {<<"language">>, <<"builtin">>}
+                                   , {<<"name">>, <<"all">>}
+                                   ]}
+            }
+          ]}.
 > PT = neo4j:paged_traverse(Node, Body).
 [ %% <<"self">> is prepended
  {<<"self">>,
   <<"http://localhost:7474/db/data/node/101/paged/traverse/node/2e23bfca61144b0f91b446fb6be562b6">>},
  %% actual data
- [{<<"labels">>,
+ {[{<<"labels">>,
  ...
 ```
 
-### No JSON, just proplists
+### No JSON, just EEP0018 structures
 
 Even for complex queries (such as [Cypher queries](http://docs.neo4j.org/chunked/stable/rest-api-cypher.html) or [transactions](http://docs.neo4j.org/chunked/stable/rest-api-transactional.html)) you never send in raw JSON, only proplists representing your objects:
 
-See "Binaries" below
+See the example in "Binaries" below
 
 ### Binaries
 
@@ -116,13 +127,13 @@ As an example, let's create a [paged traverser](http://docs.neo4j.org/chunked/mi
 ```erlang
 Neo = neo4j:connect([{base_uri, BaseUri}]),
 Node = neo4j:get_node(Neo, 101),
-Body = [ {<<"order">>, <<"breadth_first">>}
-       , {<<"uniqueness">>, <<"none">>}
-       , {<<"return_filter">>, [ {<<"language">>, <<"builtin">>}
-                               , {<<"name">>, <<"all">>}
-                               ]
-         }
-       ],
+Body = {[ {<<"order">>, <<"breadth_first">>}
+        , {<<"uniqueness">>, <<"none">>}
+        , {<<"return_filter">>, {[ {<<"language">>, <<"builtin">>}
+                                 , {<<"name">>, <<"all">>}
+                                 ]}
+          }
+        ]},
 PT = neo4j:paged_traverse(Node, Body, [ {<<"returnType">>, ReturnType}
                                       , {<<"leaseTime">>, LeaseTime}
                                       , {<<"pageSize">>, PageSize}
