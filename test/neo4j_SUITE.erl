@@ -1,8 +1,7 @@
 %%%-----------------------------------------------------------------------------
 %%% @doc Test SUITE for neo4j module
 %%%
-%%%      Note: requires a neo4j running
-%%%      Note: uses QuickCheck
+%%%      Note: requires a neo4j running on default port
 %%%
 %%% @author Dmitrii Dimandt
 %%% @copyright (C) 2013 Dmitrii Dimandt
