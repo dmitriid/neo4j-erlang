@@ -323,7 +323,7 @@ transaction_execute_commit(Neo, Query) ->
 
 -spec cypher(neo4j_root(), binary()) -> cypher_result().
 cypher(Neo, Query) ->
-  cypher(Neo, Query, [{<<>>, <<>>}]).
+  cypher(Neo, Query, null).
 
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-cypher.html#rest-api-send-queries-with-parameters
