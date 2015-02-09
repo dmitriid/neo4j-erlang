@@ -1363,7 +1363,8 @@ create(URI) ->
         _             ->
           jiffy:decode(Body)
       end;
-    {ok, 204, _, _} ->
+    {ok, 204, _, Client} ->
+      hackney:skip_body(Client),
       ok;
     {ok, Status, _, Client} ->
       process_response(URI, Status, Client)
@@ -1384,7 +1385,8 @@ create(URI, Payload) ->
         _             ->
           jiffy:decode(Body)
       end;
-    {ok, 204, _, _} ->
+    {ok, 204, _, Client} ->
+      hackney:skip_body(Client),
       ok;
     {ok, Status, _, Client} ->
       process_response(URI, Status, Client)
@@ -1399,7 +1401,8 @@ retrieve(URI) ->
     {ok, 200, _, Client} ->
       {ok, Body} = hackney:body(Client),
       jiffy:decode(Body);
-    {ok, 204, _, _} ->
+    {ok, 204, _, Client} ->
+      hackney:skip_body(Client),
       <<>>;
     {ok, Status, _, Client} ->
       process_response(URI, Status, Client)
@@ -1409,7 +1412,8 @@ retrieve(URI) ->
 update(URI, Payload) ->
   case hackney:request(put, URI, headers(), Payload) of
     {error, Reason} -> {error, Reason};
-    {ok, 204, _, _} ->
+    {ok, 204, _, Client} ->
+      hackney:skip_body(Client),
       ok;
     {ok, Status, _, Client} ->
       process_response(URI, Status, Client)
@@ -1419,7 +1423,8 @@ update(URI, Payload) ->
 delete(URI) ->
   case hackney:request(delete, URI) of
     {error, Reason} -> {error, Reason};
-    {ok, 204, _, _} ->
+    {ok, 204, _, Client} ->
+      hackney:skip_body(Client),
       ok;
     {ok, 200, _, Client} ->
       {ok, Body} = hackney:body(Client),
