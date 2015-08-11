@@ -151,7 +151,8 @@
 
 %%_* General -------------------------------------------------------------------
 
--spec connect(property_list()) -> neo4j_root() | {error, base_uri_not_specified}.
+-spec connect(property_list()) -> neo4j_root()
+                                  | {error, base_uri_not_specified}.
 connect([]) ->
   {error, base_uri_not_specified};
 connect(Options) ->
@@ -173,7 +174,8 @@ get_relationship_types(Neo) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-get-all-nodes-with-a-label
 %%
--spec get_nodes_by_label(neo4j_root(), binary()) -> [neo4j_node()] | {error, term()}.
+-spec get_nodes_by_label(neo4j_root(), binary()) -> [neo4j_node()]
+                                                    | {error, term()}.
 get_nodes_by_label(Neo, Label) ->
   {_, URI} = find(<<"label">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary, "/nodes">>).
@@ -271,7 +273,9 @@ transaction_commit(T) ->
 %%      http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-execute-statements-in-an-open-transaction-in-rest-format-for-the-return
 %%      http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-return-results-in-graph-format
 %%
--spec transaction_commit(neo4j_transaction(), neo4j_transaction_query()) -> property_list() | {error, term()}.
+-spec transaction_commit(neo4j_transaction(),
+                         neo4j_transaction_query()) -> property_list()
+                                                       | {error, term()}.
 transaction_commit(T, Query) ->
   {_, URI} = find(<<"commit">>, 1, T),
   Payload = encode_transaction_query(Query),
@@ -280,7 +284,8 @@ transaction_commit(T, Query) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-rollback-an-open-transaction
 %%
--spec transaction_rollback(neo4j_transaction()) -> property_list() | {error, term()}.
+-spec transaction_rollback(neo4j_transaction()) -> property_list()
+                                                   | {error, term()}.
 transaction_rollback(T) ->
   {_, URI0} = find(<<"commit">>, 1, T),
   URI = binary:part(URI0, {0, byte_size(URI0) - 7}),
@@ -347,7 +352,8 @@ create_node(Neo) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-nodes.html#rest-api-create-node-with-properties
 %%
--spec create_node(neo4j_root(), property_list()) -> neo4j_node() | {error, term()}.
+-spec create_node(neo4j_root(), property_list()) -> neo4j_node()
+                                                    | {error, term()}.
 create_node(Neo, Props) ->
   {_, URI} = find(<<"node">>, 1, Neo),
   Payload = jiffy:encode(Props),
@@ -359,7 +365,7 @@ create_node(Neo, Props) ->
 -spec get_node( neo4j_root()
               , neo4j_id() | binary()
               ) -> neo4j_node() | {error, term()}.
-get_node(_Neo, [{_,_}|_] = Node) ->
+get_node(_Neo, [{_, _}|_] = Node) ->
   Node;
 get_node(Neo, Id) when is_binary(Id) ->
   case is_uri(Id) of
@@ -386,7 +392,8 @@ delete_node(Node) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-get-properties-for-node
 %%
--spec get_node_properties(neo4j_node() | neo4j_id()) -> property_list() | {error, term()}.
+-spec get_node_properties(neo4j_node() | neo4j_id()) -> property_list()
+                                                        | {error, term()}.
 get_node_properties(Node) ->
   {_, URI} = find(<<"properties">>, 1, Node),
   retrieve(URI).
@@ -516,7 +523,7 @@ get_node_labels(Node) ->
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-typed-relationships
 %%
 -spec get_relationship(neo4j_root(), neo4j_id() | neo4j_relationship() | binary()) -> neo4j_relationship() | {error, term()}.
-get_relationship(_Neo, [{_,_}|_] = Relationship) ->
+get_relationship(_Neo, [{_, _}|_] = Relationship) ->
   Relationship;
 get_relationship(Neo, Id) when is_binary(Id) ->
   case is_uri(Id) of
@@ -684,7 +691,8 @@ get_constraint(Neo, Label, PropKey) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-constraints.html#rest-api-get-all-uniqueness-constraints-for-a-label
 %%
--spec get_uniqueness_constraints(neo4j_root(), binary()) -> property_list() | {error, term()}.
+-spec get_uniqueness_constraints(neo4j_root(), binary()) -> property_list()
+                                                            | {error, term()}.
 get_uniqueness_constraints(Neo, Label) ->
   {_, URI} = find(<<"constraint">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary, "/uniqueness">>).
@@ -693,7 +701,8 @@ get_uniqueness_constraints(Neo, Label) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-constraints.html#rest-api-get-all-constraints-for-a-label
 %%
--spec get_label_constraints(neo4j_root(), binary()) -> property_list() | {error, term()}.
+-spec get_label_constraints(neo4j_root(), binary()) -> property_list()
+                                                       | {error, term()}.
 get_label_constraints(Neo, Label) ->
   {_, URI} = find(<<"constraint">>, 1, Neo),
   retrieve(<<URI/binary, "/", Label/binary>>).
@@ -711,7 +720,8 @@ get_constraints(Neo) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-constraints.html#rest-api-drop-constraint
 %%
--spec drop_constraint(neo4j_root(), binary(), binary()) -> property_list() | {error, term()}.
+-spec drop_constraint(neo4j_root(), binary(), binary()) -> property_list()
+                                                           | {error, term()}.
 drop_constraint(Neo, Label, PropKey) ->
   {_, URI} = find(<<"constraint">>, 1, Neo),
   delete(<<URI/binary, "/", Label/binary, "/uniqueness/", PropKey/binary>>).
@@ -736,11 +746,13 @@ drop_constraint(Neo, Label, PropKey) ->
 %%      neo4j:traverse(Node, Body)
 %%         or
 %%      neo4j:traverse(Node, Body, ReturnType) %% where ReturnType is a binary
--spec traverse(neo4j_node(), property_list()) -> property_list() | {error, term()}.
+-spec traverse(neo4j_node(), property_list()) -> property_list()
+                                                 | {error, term()}.
 traverse(Node, Request) ->
   traverse(Node, Request, <<"node">>).
 
--spec traverse(neo4j_node(), property_list(), binary()) -> property_list() | {error, term()}.
+-spec traverse(neo4j_node(), property_list(), binary()) -> property_list()
+                                                         | {error, term()}.
 traverse(Node, Request, ReturnType) ->
   {_, URI} = find(<<"traverse">>, 1, Node),
   Payload = jiffy:encode(Request),
@@ -782,11 +794,14 @@ paged_traverse(PagedTraverse) ->
   {_, URI} = find(<<"self">>, 1, PagedTraverse),
   retrieve(URI).
 
--spec paged_traverse(neo4j_node(), property_list()) -> property_list() | {error, term()}.
+-spec paged_traverse(neo4j_node(), property_list()) -> property_list()
+                                                       | {error, term()}.
 paged_traverse(Node, Request) ->
   paged_traverse(Node, Request, [{<<"returnType">>, <<"node">>}]).
 
--spec paged_traverse(neo4j_node(), property_list(), property_list()) -> property_list() | {error, term()}.
+-spec paged_traverse(neo4j_node(),
+                     property_list(),
+                     property_list()) -> property_list() | {error, term()}.
 paged_traverse(Node, Request, Props) ->
   QueryProps = [P || P = {Key, _} <- Props, Key /= <<"returnType">>],
   Query = case encode_query_string(QueryProps) of
@@ -819,15 +834,25 @@ paged_traverse(Node, Request, Props) ->
 %%                          ]},
 %%      neo4j:paths(Node, <<"shortestPath">>, 3, AdditionalParams).
 %%
--spec paths(neo4j_node(), binary(), integer(), property_list()) -> property_list() | {error, term()}.
+-spec paths(neo4j_node(),
+            binary(),
+            integer(),
+            property_list()) -> property_list() | {error, term()}.
 paths(Node, Algorithm, MaxDepth, Params) ->
   graph_algorithm(<<"paths">>, Node, Algorithm, MaxDepth, Params).
 
--spec path(neo4j_node(), binary(), integer(), property_list()) -> property_list() | {error, term()}.
+-spec path(neo4j_node(),
+           binary(),
+           integer(),
+           property_list()) -> property_list() | {error, term()}.
 path(Node, Algorithm, MaxDepth, Params) ->
   graph_algorithm(<<"path">>, Node, Algorithm, MaxDepth, Params).
 
--spec graph_algorithm(binary(), neo4j_node(), binary(), integer(), property_list()) -> property_list() | {error, term()}.
+-spec graph_algorithm(binary(),
+                      neo4j_node(),
+                      binary(),
+                      integer(),
+                      property_list()) -> property_list() | {error, term()}.
 graph_algorithm(PathOrPaths, Node, Algorithm, MaxDepth, Params) ->
   {_, URI} = find(<<"self">>, 1, Node),
   PathsURI = <<URI/binary, "/", PathOrPaths/binary>>,
@@ -881,7 +906,8 @@ batch(Neo, Request) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-create-node-index
 %%
--spec create_node_index(neo4j_root(), binary()) -> neo4j_index() | {error, term()}.
+-spec create_node_index(neo4j_root(), binary()) -> neo4j_index()
+                                                   | {error, term()}.
 create_node_index(Neo, Name) ->
   {_, URI} = find(<<"node_index">>, 1, Neo),
   Payload = jiffy:encode({[{<<"name">>, Name}]}),
@@ -890,7 +916,9 @@ create_node_index(Neo, Name) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-create-node-index
 %%
--spec create_node_index(neo4j_root(), binary(), property_list()) -> neo4j_index() | {error, term()}.
+-spec create_node_index(neo4j_root(),
+                        binary(),
+                        property_list()) -> neo4j_index() | {error, term()}.
 create_node_index(Neo, Name, Config) ->
   {_, URI} = find(<<"node_index">>, 1, Neo),
   Payload = jiffy:encode({[ {<<"name">>, Name}
@@ -909,7 +937,8 @@ delete_node_index(Neo, Name) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-indexes.html#rest-api-list-node-indexes
 %%
--spec node_indices(neo4j_root()) -> [{binary(), neo4j_index()}] | {error, term()}.
+-spec node_indices(neo4j_root()) -> [{binary(), neo4j_index()}]
+                                    | {error, term()}.
 node_indices(Neo) ->
   {_, URI} = find(<<"node_index">>, 1, Neo),
   list(retrieve(URI)).
@@ -1228,7 +1257,9 @@ create_node_auto_index(Neo, Config) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-create-an-auto-index-for-relationships-with-specific-configuration
 %%
--spec create_relationship_auto_index(neo4j_root(), property_list()) -> term() | {error, term()}.
+-spec create_relationship_auto_index(neo4j_root(),
+                                     property_list()) -> term()
+                                                         | {error, term()}.
 create_relationship_auto_index(Neo, Config) ->
   create_node_index(Neo, <<"relationship_auto_index">>, Config).
 
@@ -1492,17 +1523,20 @@ encode_transaction_query(Q) ->
 -spec prepare_statement(binary()) -> {property_list()};
                        ({binary()}) -> {property_list()};
                        ({binary(), property_list()}) -> {property_list()};
-                       ({binary(), property_list(), [binary()]}) -> {property_list()}.
+                       ({binary(), property_list(), [binary()]}) ->
+                           {property_list()}.
 prepare_statement(Q) when is_binary(Q) ->
   prepare_statement_real({Q, [], []});
 prepare_statement({Q}) ->
   prepare_statement({Q, [], []});
 prepare_statement({Q, P}) ->
   prepare_statement_real({Q, P, []});
-prepare_statement({Q,P,F}) ->
-  prepare_statement_real({Q,P,F}).
+prepare_statement({Q, P, F}) ->
+  prepare_statement_real({Q, P, F}).
 
--spec prepare_statement_real({binary(), property_list() | [], list(binary()) | []}) -> {property_list()}.
+-spec prepare_statement_real({binary(),
+                              property_list() | [],
+                              list(binary()) | []}) -> {property_list()}.
 prepare_statement_real({Query, [], []}) ->
   {[{<<"statement">>, Query}]};
 prepare_statement_real({Query, Params, []}) ->
