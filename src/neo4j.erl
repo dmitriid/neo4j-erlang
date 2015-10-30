@@ -1364,19 +1364,16 @@ get_root(BaseURI) when is_binary(BaseURI) ->
       {error, {non_200_response, StatusCode, Body}};
     {ok, _, _, Client} ->
       {ok, Body} = hackney:body(Client),
-      case jiffy:decode(Body) of
-        {error, E1, E2} -> {error, {E1, E2}};
-        Root            ->
-          %% we add some links as these are not returned by neo4j
-          %% and we wouldn't want to recreate them over and over again
-          prepend([ {<<"base_uri">>, BaseURI}
-                  , {<<"relationship">>, <<BaseURI/binary, "relationship">>}
-                  , {<<"label">>, <<BaseURI/binary, "label">>}
-                  , {<<"labels">>, <<BaseURI/binary, "labels">>}
-                  , {<<"index">>, <<BaseURI/binary, "schema/index">>}
-                  , {<<"constraint">>, <<BaseURI/binary, "schema/constraint">>}]
-                 , Root)
-      end
+      Root = jiffy:decode(Body),
+      %% we add some links as these are not returned by neo4j
+      %% and we wouldn't want to recreate them over and over again
+      prepend([ {<<"base_uri">>, BaseURI}
+              , {<<"relationship">>, <<BaseURI/binary, "relationship">>}
+              , {<<"label">>, <<BaseURI/binary, "label">>}
+              , {<<"labels">>, <<BaseURI/binary, "labels">>}
+              , {<<"index">>, <<BaseURI/binary, "schema/index">>}
+              , {<<"constraint">>, <<BaseURI/binary, "schema/constraint">>}]
+             , Root)
   end.
 
 -spec create(binary()) -> {neo4j_type()} | {error, term()}.
