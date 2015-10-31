@@ -138,14 +138,24 @@
 -type cypher_result() :: property_list().
 -type neo4j_id() :: property_list().
 -type neo4j_index() :: property_list().
--type neo4j_transaction() :: property_list().
--type neo4j_transaction_query() :: [ Query::binary()
-                                   | {Query::binary(), Parameters::binary()}
-                                   | {Query :: binary(), Parameters :: binary(), DataFormats::[binary()]}
-                                   ].
-
+-type neo4j_transaction() :: maybe_improper_list() | {maybe_improper_list()}.
+-type neo4j_transaction_query() :: maybe_improper_list()
+                                   | {maybe_improper_list()}
+                                   | [ Query::binary()
+                                       | {Query::binary(),
+                                          Parameters::binary()}
+                                       | {Query :: binary(),
+                                          Parameters :: binary(),
+                                          DataFormats::[binary()]}
+                                       | {Query::binary(),
+                                          Parameters::{maybe_improper_list()}}
+                                       | {Query :: binary(),
+                                          Parameters::{maybe_improper_list()},
+                                          DataFormats::[binary()]}
+                                      ].
+-type neo4j_transaction_result() ::
+    maybe_improper_list() | {maybe_improper_list()} | {error, term()}.
 -type neo4j_type() :: property_list().
-
 
 %%_* API =======================================================================
 
@@ -223,7 +233,8 @@ get_properties(Neo) ->
 %%                               ]
 %%                             )...
 %%
--spec transaction_begin(neo4j_root(), neo4j_transaction_query()) -> property_list() | {error, term()}.
+-spec transaction_begin(neo4j_root(), neo4j_transaction_query()) ->
+    neo4j_transaction_result().
 transaction_begin(Neo, Query) ->
   {_, URI} = find(<<"transaction">>, 1, Neo),
   Payload = encode_transaction_query(Query),
@@ -251,7 +262,8 @@ transaction_begin(Neo, Query) ->
 %%
 %%      neo4j:transaction_execute(T1, <<"">>).
 %%
--spec transaction_execute(neo4j_transaction(), neo4j_transaction_query()) -> property_list() | {error, term()}.
+-spec transaction_execute(neo4j_transaction(), neo4j_transaction_query()) ->
+    neo4j_transaction_result().
 transaction_execute(T, Query) ->
   {_, URI0} = find(<<"commit">>, 1, T),
   URI = binary:part(URI0, {0, byte_size(URI0) - 7}),
@@ -263,7 +275,7 @@ transaction_execute(T, Query) ->
 %%      http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-execute-statements-in-an-open-transaction-in-rest-format-for-the-return
 %%      http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-return-results-in-graph-format
 %%
--spec transaction_commit(neo4j_transaction()) -> property_list() | {error, term()}.
+-spec transaction_commit(neo4j_transaction()) -> neo4j_transaction_result().
 transaction_commit(T) ->
   {_, URI} = find(<<"commit">>, 1, T),
   create(URI).
@@ -274,8 +286,7 @@ transaction_commit(T) ->
 %%      http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-return-results-in-graph-format
 %%
 -spec transaction_commit(neo4j_transaction(),
-                         neo4j_transaction_query()) -> property_list()
-                                                       | {error, term()}.
+    neo4j_transaction_query()) -> neo4j_transaction_result().
 transaction_commit(T, Query) ->
   {_, URI} = find(<<"commit">>, 1, T),
   Payload = encode_transaction_query(Query),
@@ -284,8 +295,7 @@ transaction_commit(T, Query) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-rollback-an-open-transaction
 %%
--spec transaction_rollback(neo4j_transaction()) -> property_list()
-                                                   | {error, term()}.
+-spec transaction_rollback(neo4j_transaction()) -> neo4j_transaction_result().
 transaction_rollback(T) ->
   {_, URI0} = find(<<"commit">>, 1, T),
   URI = binary:part(URI0, {0, byte_size(URI0) - 7}),
@@ -305,7 +315,8 @@ transaction_rollback(T) ->
 %%                                        ]
 %%                                      )...
 %%
--spec transaction_execute_commit(neo4j_root(), neo4j_transaction_query()) -> property_list() | {error, term()}.
+-spec transaction_execute_commit(neo4j_root(), neo4j_transaction_query()) ->
+    neo4j_transaction_result().
 transaction_execute_commit(Neo, Query) ->
   {_, URI} = find(<<"transaction">>, 1, Neo),
   Payload = encode_transaction_query(Query),
@@ -1398,7 +1409,7 @@ create(URI) ->
       process_response(URI, Status, Client)
   end.
 
--spec create(binary(), binary()) -> {neo4j_type()} | {error, term()}.
+-spec create(binary(), binary() | iolist()) -> {neo4j_type()} | {error, term()}.
 create(URI, Payload) ->
   case hackney:request(post, URI, headers(), Payload) of
     {error, Reason} -> {error, Reason};
@@ -1510,7 +1521,7 @@ get_relationship_by_type(_, _, _) ->
 %%   } ]
 %% }
 %%
--spec encode_transaction_query(property_list() | binary()) -> binary().
+-spec encode_transaction_query(neo4j_transaction_query()) -> iolist().
 encode_transaction_query(<<"">>) ->
   jiffy:encode({[{<<"statements">>, []}]});
 encode_transaction_query(Q) ->
@@ -1519,9 +1530,14 @@ encode_transaction_query(Q) ->
 
 -spec prepare_statement(binary()) -> {property_list()};
                        ({binary()}) -> {property_list()};
-                       ({binary(), property_list()}) -> {property_list()};
+                       ({binary(), property_list()}) ->
+                        {property_list()};
                        ({binary(), property_list(), [binary()]}) ->
-                           {property_list()}.
+                        {property_list()};
+                       ({binary(), {property_list()}}) ->
+                        {property_list()};
+                       ({binary(), {property_list()}, [binary()]}) ->
+                        {property_list()}.
 prepare_statement(Q) when is_binary(Q) ->
   prepare_statement_real({Q, [], []});
 prepare_statement({Q}) ->
@@ -1532,7 +1548,7 @@ prepare_statement({Q, P, F}) ->
   prepare_statement_real({Q, P, F}).
 
 -spec prepare_statement_real({binary(),
-                              property_list() | [],
+                              property_list() | {property_list()} | [],
                               list(binary()) | []}) -> {property_list()}.
 prepare_statement_real({Query, [], []}) ->
   {[{<<"statement">>, Query}]};
