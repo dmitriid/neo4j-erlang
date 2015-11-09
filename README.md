@@ -2,7 +2,7 @@
 
 This is a lightweight wrapper for [Neo4j REST API](http://docs.neo4j.org/chunked/stable/rest-api.html).
 
-### Current version: 0.2
+### Current version: 0.2.1
 
 *Breaking changes from [0.1](https://github.com/dmitriid/neo4j-erlang/tree/0.1)*
 
