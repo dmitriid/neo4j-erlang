@@ -1,14 +1,26 @@
-/deps
+# Erlang specifics
 /ebin/*
+*.plt
 erl_crash.dump
-*.iml
-/test/*.beam
-.idea
+
+# Test specifics
 /ct*
-/_rel
-/logs
-relx
+/test/*.beam
 *.js
 *.html
-*.plt
 variables-*
+_build
+rebar.lock
+.rebar3
+/logs
+
+# Build tool  specifics
+/deps
+/_rel
+relx
+*.d
+.erlang.mk
+
+# IDE specifics
+*.iml
+.idea
