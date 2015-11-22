@@ -1,4 +1,6 @@
 PROJECT = neo4j
+PROJECT_DESCRIPTION = Erlang client library for Neo4J's REST API
+PROJECT_VERSION = 0.2.2
 
 DEPS = hackney jiffy
 # this commit has a fix for certifi to build with erlang.mk
