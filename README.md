@@ -2,8 +2,16 @@
 
 This is a lightweight wrapper for [Neo4j REST API](http://docs.neo4j.org/chunked/stable/rest-api.html).
 
-### Current version: 0.2.1
+### Current version: 0.2.2
 
+#### Known limitations
+
+- Doesn't support authorization. There are currently no plans to implement it
+  for the 2.x versions (you're more than welcome to contribute though ;) ).
+- Doesn't support streaming
+- See _Assumptions_ below
+
+#### Warning if you're upgrading from `0.1`
 *Breaking changes from [0.1](https://github.com/dmitriid/neo4j-erlang/tree/0.1)*
 
 * [jsx](https://github.com/iskra/jsx) has been replaced by [jiffy](https://github.com/davisp/jiffy).
@@ -12,13 +20,22 @@ This readme and all comments throughout the code have been updated to reflect th
 
 ## What?
 
-- Implements all of Neo4J 2.0.0's REST API as referenced [here](http://docs.neo4j.org/chunked/stable/rest-api.html) with one caveat:
+- Implements all of Neo4J 2.x's REST API as referenced [here](http://docs.neo4j.org/chunked/stable/rest-api.html) with one caveat:
  - Does *not* implement [streaming API](http://docs.neo4j.org/chunked/stable/rest-api-streaming.html)
 - Uses [jiffy](https://github.com/davisp/jiffy) for JSON
 - Uses [hackney](https://github.com/benoitc/hackney) for http queries
- - Does *not* support HTTPS (yet?)
+ - Should support HTTPS, but this wasn't tested
 
 ## How?
+
+### Building
+
+- Clone from the repo
+- Run `make` to build with `erlang.mk`
+- If you prefer `rebar`/`rebar3`, you can build the project by invoking
+  `rebar compile` or `rebar3 compile` (you must have them on your system)
+- NOTE: if you run tests, the test suite will by default run amok on your local
+  database. BEWARE.
 
 ### Sample session
 
