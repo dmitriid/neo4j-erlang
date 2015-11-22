@@ -197,7 +197,7 @@ delete_node_properties(Config) ->
   ?assertMatch([], RetrievedNodeProps),
 
   RetrievedProps = neo4j:get_node_properties(Node),
-  ?assertMatch(<<>>, RetrievedProps),
+  ?assertMatch({[]}, RetrievedProps),
 
   RetrievedProp = neo4j:get_node_property(Node, encode(Key)),
   ?assertMatch({error, not_found}, RetrievedProp).
@@ -590,7 +590,7 @@ delete_relationship_properties(Config) ->
   ?assertEqual([], Data),
 
   RetrievedRelationshipProps = neo4j:get_relationship_properties(Relationship),
-  ?assertEqual(<<>>, RetrievedRelationshipProps).
+  ?assertEqual({[]}, RetrievedRelationshipProps).
 
 %% -----------------------------------------------------------------------------
 %%
@@ -612,7 +612,7 @@ delete_relationship_property(Config) ->
   Node2 = neo4j:create_node(Neo),
   Relationship = neo4j:create_relationship( Node1
                                           , Node2
-                                          , <<"set_get_relationship_properties">>
+                                          , <<"delete_relationship_property">>
                                           , {Props}),
   neo4j:delete_relationship_property(Relationship, Key),
 
@@ -886,7 +886,7 @@ transactions(Config) ->
   Neo = lkup(neo, Config),
 
   Query = [ { <<"CREATE (n {props}) RETURN n">>
-            , {[{<<"props">>, <<"My Node">>}]}
+            , {[{<<"props">>, {[{ <<"prop">>, <<"My Node">>}]}}]}
             , [<<"REST">>] %% optional parameter for data format
             }
           ],
