@@ -20,6 +20,7 @@ rebar.lock
 relx
 *.d
 .erlang.mk
+.erlang.mk.*
 
 # IDE specifics
 *.iml
