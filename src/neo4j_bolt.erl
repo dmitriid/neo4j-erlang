@@ -12,11 +12,8 @@
 -author("dmitriid").
 
 %%_* Exports ===================================================================
--export([serialize/1]).
-
-%%_* Includes ==================================================================
--include_lib("eunit/include/eunit.hrl").
-
+-export([ serialize/1
+        ]).
 
 %%_* API =======================================================================
 
@@ -26,16 +23,16 @@
 %%      C0  -- Null
 serialize(null) ->
   <<16#C0/integer>>;
+
 %%  Boolean
 %%  -------
 %%  Boolean values are encoded within a single marker byte, using 0xC3 to denote
 %%  true and 0xC2 to denote false.
 %%      C3  -- True
 %%      C2  -- False
-serialize(true) ->
-  <<16#C3/integer>>;
-serialize(false) ->
-  <<16#C2/integer>>;
+serialize(true)  -> <<16#C3/integer>>;
+serialize(false) -> <<16#C2/integer>>;
+
 %%  Floating Point Numbers
 %%  ----------------------
 %%  These are double-precision floating points for approximations of any number,
@@ -51,7 +48,8 @@ serialize(false) ->
 %%      C1 3F F1 99 99 99 99 99 9A  -- Float(+1.1)
 %%      C1 BF F1 99 99 99 99 99 9A  -- Float(-1.1)
 serialize(Float) when is_float(Float) ->
-  error({floats, not_implemented});
+  <<16#C1/integer, Float/float>>;
+
 %%  Integers
 %%  --------
 %%  Integer values occupy either 1, 2, 3, 5 or 9 bytes depending on magnitude and
@@ -86,29 +84,30 @@ serialize(Int) when is_integer(Int) ->
       <<Int:1/big-signed-integer-unit:8>>;
     %% INT_8
     Int >= -128 andalso Int =< 17 ->
-      <<16#C8:1/big-signed-integer-unit:8
+      <<16#C8/integer
       , Int:1/big-signed-integer-unit:8>>;
     %% INT_16
     Int >= -32768 andalso Int =< -129
     orelse
     Int >= 128 andalso Int =< 32767 ->
-      <<16#C9:1/big-signed-integer-unit:8
+      <<16#C9/integer
       , Int:2/big-signed-integer-unit:8>>;
     %% INT_32
     Int >= -2147483648 andalso Int =< -32769
     orelse
     Int >= 32768 andalso Int =< 2147483647 ->
-      <<16#CA:1/big-signed-integer-unit:8
+      <<16#CA/integer
       , Int:4/big-signed-integer-unit:8>>;
     %% INT_64
     Int >= -9223372036854775808 andalso Int =< -2147483649
     orelse
     Int >= 2147483648 andalso Int =< 9223372036854775807 ->
-      <<16#CB:1/big-signed-integer-unit:8
+      <<16#CB/integer
       , Int:8/big-signed-integer-unit:8>>;
     true ->
-      error(not_implemented)
+      error({integer, too_large})
   end;
+
 %%  Text
 %%  ----
 %%  Text data is represented as UTF-8 encoded binary data. Note that sizes used
@@ -133,92 +132,29 @@ serialize(Int) when is_integer(Int) ->
 %%      6F 70 71 72  73 74 75 76  77 78 79 7A  -- "abcdefghijklmnopqrstuvwxyz"
 %%      D0 18 45 6E  20 C3 A5 20  66 6C C3 B6  74 20 C3 B6
 %%      76 65 72 20  C3 A4 6E 67  65 6E  -- "En å flöt över ängen"
-serialize(Text) when is_binary(Text), byte_size(Text) < 15 ->
+serialize(Text) when is_binary(Text), byte_size(Text) =< 15 ->
   SizeMarker = 16#80 + byte_size(Text),
-  <<SizeMarker:1/big-signed-integer-unit:8, Text/binary>>;
+  <<SizeMarker/integer, Text/binary>>;
 serialize(Text) when is_binary(Text) ->
   ByteSize = byte_size(Text),
-
   {Marker, Size} =
     if
       ByteSize =< 255 ->
-        { <<16#D0:1/big-signed-integer-unit:8>>
+        { <<16#D0/integer>>
         , <<ByteSize:1/big-unsigned-integer-unit:8>>};
       ByteSize =< 65535 ->
-        { <<16#D1:1/big-signed-integer-unit:8>>
+        { <<16#D1/integer>>
         , <<ByteSize:2/big-unsigned-integer-unit:8>>};
       ByteSize =< 4294967295 ->
-        { <<16#D2:1/big-signed-integer-unit:8>>
+        { <<16#D2/integer>>
         , <<ByteSize:4/big-unsigned-integer-unit:8>>};
       true -> error({text, size_too_big})
     end,
   <<Marker/binary, Size/binary, Text/binary>>;
+
 serialize(Text) when is_binary(Text) ->
   error(not_implemented);
 serialize(_) ->
   error(not_implemented).
 
--ifdef(EUNIT).
-serialize_null_test() ->
-  ?assertEqual( <<16#C0/big-signed-integer>>
-              , neo4j_bolt:serialize(null)).
 
-serialize_boolean_test() ->
-  ?assertEqual( <<16#C3/big-signed-integer>>
-              , neo4j_bolt:serialize(true)),
-  ?assertEqual( <<16#C2/big-signed-integer>>
-              , neo4j_bolt:serialize(false)).
-
-serialize_float_test() ->
-  ?assertError( {floats, not_implemented}
-              , neo4j_bolt:serialize(1.1)).
-
-serialize_tiny_int_test() ->
-  ?assertEqual( <<1:1/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(1)).
-
-serialize_int_8_test() ->
-  ?assertEqual( <<16#C8:1/big-signed-integer-unit:8
-                ,-100:1/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(-100)).
-
-serialize_int_16_test() ->
-  ?assertEqual( <<16#C9:1/big-signed-integer-unit:8
-                ,-1000:2/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(-1000)),
-  ?assertEqual( <<16#C9:1/big-signed-integer-unit:8
-                ,1000:2/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(1000)).
-
-serialize_int_32_test() ->
-  ?assertEqual( <<16#CA:1/big-signed-integer-unit:8
-                ,-1000000:4/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(-1000000)),
-  ?assertEqual( <<16#CA:1/big-signed-integer-unit:8
-                ,1000000:4/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(1000000)).
-
-serialize_int_64_test() ->
-  ?assertEqual( <<16#CB:1/big-signed-integer-unit:8
-                ,-1000000000000:8/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(-1000000000000)),
-  ?assertEqual( <<16#CB:1/big-signed-integer-unit:8
-                , 1000000000000:8/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(1000000000000)).
-
-serialize_empty_text_test() ->
-  ?assertEqual(<<16#80:1/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(<<>>)).
-
-serialize_text_up_to_15_bytes_test() ->
-  ?assertEqual(<<16#81:1/big-signed-integer-unit:8
-               , 16#61:1/big-signed-integer-unit:8>>
-              , neo4j_bolt:serialize(<<"a">>)).
-
-serialize_text_up_to_255_bytes_test() ->
-  ?assertEqual(<<16#D0:1/big-signed-integer-unit:8
-               , 16#1A:1/big-signed-integer-unit:8
-               , "abcdefghijklmnopqrstuvwxyz"
-               >>
-              , neo4j_bolt:serialize(<<"abcdefghijklmnopqrstuvwxyz">>)).
--endif.
