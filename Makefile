@@ -18,7 +18,7 @@ EUNIT_OPTS = no_tty, {report, {eunit_progress, [colored, profile]}}
 
 .DEFAULT_GOAL := app
 
-eqc-ci: deps app
+eqc-ci: app
 	erlc -o ebin test/*_eqc.erl
 
 include erlang.mk
