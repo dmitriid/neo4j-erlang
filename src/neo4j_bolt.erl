@@ -173,6 +173,22 @@ deserialize(<<16#C0/integer>>) ->
 %%      C2  -- False
 deserialize(<<16#C3/integer>>)  -> true;
 deserialize(<<16#C2/integer>>) -> false;
+%%  Floating Point Numbers
+%%  ----------------------
+%%  These are double-precision floating points for approximations of any number,
+%%  notably for representing fractions and decimal numbers. Floats are encoded as a
+%%  single 0xC1 marker byte followed by 8 bytes, formatted according to the IEEE
+%%  754 floating-point "double format" bit layout.
+%%  - Bit 63 (the bit that is selected by the mask `0x8000000000000000`) represents
+%%    the sign of the number.
+%%  - Bits 62-52 (the bits that are selected by the mask `0x7ff0000000000000`)
+%%    represent the exponent.
+%%  - Bits 51-0 (the bits that are selected by the mask `0x000fffffffffffff`)
+%%    represent the significand (sometimes called the mantissa) of the number.
+%%      C1 3F F1 99 99 99 99 99 9A  -- Float(+1.1)
+%%      C1 BF F1 99 99 99 99 99 9A  -- Float(-1.1)
+deserialize(<<16#C1/integer, Float/float>>) ->
+  Float;
 %%  Integers
 %%  --------
 %%  Integer values occupy either 1, 2, 3, 5 or 9 bytes depending on magnitude and

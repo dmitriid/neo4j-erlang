@@ -31,6 +31,7 @@ gen_data() ->
   frequency([ {1,  null}
             , {1,  bool()}
             , {10, int()}
+            , {10, real()}
             , {5,  largeint()}
             , {10, gen_binary(0)}
             , {10, gen_binary(15)}
