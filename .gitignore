@@ -2,6 +2,7 @@
 /ebin/*
 *.plt
 erl_crash.dump
+*.beam
 
 # Test specifics
 /ct*
@@ -21,6 +22,10 @@ relx
 *.d
 .erlang.mk
 .erlang.mk.*
+
+# EQC
+.eqc-info
+current_counterexample.eqc
 
 # IDE specifics
 *.iml
