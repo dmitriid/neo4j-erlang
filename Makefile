@@ -12,4 +12,8 @@ PLT_APPS ?= asn1 compiler crypto erts inets kernel public_key stdlib ssl syntax_
 
 CT_SUITES ?= neo4j
 
+TEST_DEPS = eunit_formatters
+
+EUNIT_OPTS = no_tty, {report, {eunit_progress, [colored, profile]}}
+
 include erlang.mk
