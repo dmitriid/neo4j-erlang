@@ -19,20 +19,24 @@
 prop_deserialize_serialize() ->
   ?FORALL( Value
          , gen_data()
-         , begin
+         , eqc:collect(Value, begin
              Value == neo4j_bolt:deserialize(neo4j_bolt:serialize(Value))
            end
-         ).
+         )).
 
 
 %%_* Generators ================================================================
 
 gen_data() ->
-  frequency([ {1,  null}
-            , {1,  bool()}
+  frequency([{70, gen_simple()}
+            ,{30, gen_complex()}]).
+
+gen_simple() ->
+  frequency([ {1, null}
+            , {1, bool()}
             , {10, int()}
             , {10, real()}
-            , {5,  largeint()}
+            , {5, largeint()}
             , {10, gen_binary(0)}
             , {10, gen_binary(15)}
             , {1,  gen_binary(255)}
@@ -41,9 +45,22 @@ gen_data() ->
             %, {1, gen_binary(4294967295)}
             ]).
 
+gen_complex() ->
+  frequency([{20, gen_list(0)}
+            ,{20, gen_list(15)}]).
 
-gen_binary(MaxSize) ->
-  ?SIZED(Sz, case Sz >= MaxSize of
-               true -> binary(MaxSize);
-               false -> binary(MaxSize + Sz)
-             end).
+
+gen_binary(MinSize) ->
+  frequency([ {10, binary(MinSize)}
+            , {5, ?SIZED(Sz, case Sz >= MinSize of
+                               true -> binary(MinSize);
+                               false -> binary(MinSize + Sz)
+                             end)}]).
+
+gen_list(MinSize) ->
+  frequency([ {60, vector(MinSize, gen_simple())}
+            , {30, ?SIZED(Sz, vector(MinSize + Sz, gen_simple()))}
+            , {5, ?SIZED(Sz, vector(MinSize, ?LAZY(vector(Sz div 2, gen_simple()))))}
+            , {4, ?SIZED(Sz, vector(MinSize + Sz, ?LAZY(vector(Sz div 2, gen_simple()))))}
+            , {1, ?SIZED(Sz, vector(MinSize + Sz, ?LAZY(vector(Sz div 2, gen_complex()))))}
+            ]).

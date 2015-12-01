@@ -84,3 +84,36 @@ serialize_text_up_to_255_bytes_test() ->
                 , "abcdefghijklmnopqrstuvwxyz"
                 >>
               , neo4j_bolt:serialize(<<"abcdefghijklmnopqrstuvwxyz">>)).
+
+serialize_empty_list_test() ->
+  ?assertEqual(<<16#90/integer>>, neo4j_bolt:serialize([])),
+  ?assertEqual(<<16#93/integer
+               , 16#01/integer
+               , 16#02/integer
+               , 16#03/integer
+               >>
+              , neo4j_bolt:serialize([1,2,3])),
+  ?assertEqual(<<16#D4/integer
+               ,16#14/integer
+               ,16#01/integer
+               ,16#02/integer
+               ,16#03/integer
+               ,16#04/integer
+               ,16#05/integer
+               ,16#06/integer
+               ,16#07/integer
+               ,16#08/integer
+               ,16#09/integer
+               ,16#00/integer
+               ,16#01/integer
+               ,16#02/integer
+               ,16#03/integer
+               ,16#04/integer
+               ,16#05/integer
+               ,16#06/integer
+               ,16#07/integer
+               ,16#08/integer
+               ,16#09/integer
+               ,16#00/integer>>
+              , neo4j_bolt:serialize([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 0
+                                     , 1, 2, 3, 4, 5, 6, 7, 8, 9, 0])).
