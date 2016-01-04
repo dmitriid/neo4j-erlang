@@ -9,6 +9,7 @@
 -module(neo4j).
 -author("dmitrii.dimandt").
 
+-define(PAYLOAD(L, P), base64:encode(<<L/binary, <<":">>/binary, P/binary>>)).
 
 %%_* Exports ===================================================================
 -export([
@@ -167,8 +168,10 @@ connect([]) ->
   {error, base_uri_not_specified};
 connect(Options) ->
   _ = start_app(hackney),
+  Login = find(login, 1, Options),
+  Password = find(password, 1, Options),
   case find(base_uri, 1, Options) of
-    {_, BaseURI} -> get_root(BaseURI);
+    {_, BaseURI} -> get_root(BaseURI, Login, Password);
     _            -> {error, base_uri_not_specified}
   end.
 
@@ -1365,10 +1368,11 @@ remove_relationship_auto_index_property(Neo, Property) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-service-root.html#rest-api-get-service-root
 %%
--spec get_root(binary()) -> neo4j_root() | {error, term()}.
-get_root(BaseURI) when is_list(BaseURI)   -> get_root(list_to_binary(BaseURI));
-get_root(BaseURI) when is_binary(BaseURI) ->
-  case hackney:request(get, BaseURI, headers()) of
+-spec get_root(binary(), tuple() | false, tuple() | false) -> neo4j_root() | {error, term()}.
+get_root(BaseURI, Login, Password) when is_list(BaseURI)   ->
+  get_root(list_to_binary(BaseURI), Login, Password);
+get_root(BaseURI, Login, Password) when is_binary(BaseURI) ->
+  case hackney:request(get, BaseURI, headers(Login, Password)) of
     {error, Reason} -> {error, Reason};
     {ok, StatusCode, _, Client} when StatusCode /= 200 ->
       {ok, Body} = hackney:body(Client),
@@ -1639,10 +1643,20 @@ encode_query_string(Props) ->
          end,
   lists:foldl(Join, <<>>, List).
 
+-spec headers(tuple() | false, tuple() | false) -> property_list().
+headers({_, Login}, {_, Password}) when is_binary(Login), is_binary(Password) ->
+  Payload = <<<<"Basic ">>/binary, (?PAYLOAD(Login, Password))/binary>>,
+  [ {<<"Accept">>, <<"application/json; charset=UTF-8">>}
+    , {<<"Content-Type">>, <<"application/json">>}
+    , {<<"Authorization">>, Payload}
+  ];
+headers(_, _) ->
+  headers().
+
 -spec headers() -> property_list().
 headers() ->
   [ {<<"Accept">>, <<"application/json; charset=UTF-8">>}
-  , {<<"Content-Type">>, <<"application/json">>}
+    , {<<"Content-Type">>, <<"application/json">>}
   ].
 
 
