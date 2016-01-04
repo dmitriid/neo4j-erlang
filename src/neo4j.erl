@@ -1651,6 +1651,10 @@ headers({_, Login}, {_, Password}) when is_binary(Login), is_binary(Password) ->
     , {<<"Authorization">>, Payload}
   ];
 headers(_, _) ->
+  headers().
+
+-spec headers() -> property_list().
+headers() ->
   [ {<<"Accept">>, <<"application/json; charset=UTF-8">>}
     , {<<"Content-Type">>, <<"application/json">>}
   ].
