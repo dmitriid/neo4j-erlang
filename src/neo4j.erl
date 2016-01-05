@@ -195,7 +195,8 @@ get_nodes_by_label(Neo, Label) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-labels.html#rest-api-get-nodes-by-label-and-property
 %%
--spec get_nodes_by_label(neo4j_root(), binary(), property_list()) -> [neo4j_node()] | {error, term()}.
+-spec get_nodes_by_label(neo4j_root(), binary(), property_list()) -> 
+                                              [neo4j_node()] | {error, term()}.
 get_nodes_by_label(Neo, Label, Properties) ->
   {_, URI} = find(<<"label">>, 1, Neo),
   Props = encode_query_string(Properties),
@@ -230,7 +231,8 @@ get_properties(Neo) ->
 %%      neo4j:transaction_begin( Neo
 %%                             , [ { <<"CREATE (n {props}) RETURN n">>
 %%                                 , {[{<<"props">>, <<"My Node">>}]}
-%%                                 , [<<"REST>>"] %% optional parameter for data format
+%%                                 , [<<"REST>>"] 
+%%                                 %% ^---optional parameter for data format
 %%                                 }
 %%                               ]
 %%                             )...
@@ -251,7 +253,8 @@ transaction_begin(Neo, Query) ->
 %%      T = neo4j:transaction_begin( Neo
 %%                                 , [ { <<"CREATE (n {props}) RETURN n">>
 %%                                     , {[{<<"props">>, <<"My Node">>}]}
-%%                                     , [<<"REST>>"] %% optional parameter for data format
+%%                                     , [<<"REST>>"] 
+%%                                     %% ^---optional parameter for data format
 %%                                     }
 %%                                   ]
 %%                                 ),
@@ -264,8 +267,8 @@ transaction_begin(Neo, Query) ->
 %%
 %%      neo4j:transaction_execute(T1, <<"">>).
 %%
--spec transaction_execute(neo4j_transaction(), neo4j_transaction_query(), neo4j_root()) ->
-    neo4j_transaction_result().
+-spec transaction_execute(neo4j_transaction(), neo4j_transaction_query(), 
+                                    neo4j_root()) -> neo4j_transaction_result().
 transaction_execute(T, Query, Neo) ->
   {_, URI0} = find(<<"commit">>, 1, T),
   URI = binary:part(URI0, {0, byte_size(URI0) - 7}),
@@ -277,7 +280,8 @@ transaction_execute(T, Query, Neo) ->
 %%      http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-execute-statements-in-an-open-transaction-in-rest-format-for-the-return
 %%      http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-return-results-in-graph-format
 %%
--spec transaction_commit(neo4j_transaction(), neo4j_root()) -> neo4j_transaction_result().
+-spec transaction_commit(neo4j_transaction(), neo4j_root()) -> 
+                                                    neo4j_transaction_result().
 transaction_commit(T, Neo) ->
   {_, URI} = find(<<"commit">>, 1, T),
   create(URI, Neo).
@@ -297,7 +301,8 @@ transaction_commit(T, Query, Neo) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-transactional.html#rest-api-rollback-an-open-transaction
 %%
--spec transaction_rollback(neo4j_transaction(), neo4j_root()) -> neo4j_transaction_result().
+-spec transaction_rollback(neo4j_transaction(), neo4j_root()) -> 
+                                                neo4j_transaction_result().
 transaction_rollback(T, Neo) ->
   {_, URI0} = find(<<"commit">>, 1, T),
   URI = binary:part(URI0, {0, byte_size(URI0) - 7}),
@@ -346,7 +351,8 @@ cypher(Neo, Query) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-cypher.html#rest-api-send-queries-with-parameters
 %%
--spec cypher(neo4j_root(), binary(), property_list() | null) -> {cypher_result()} | {error, term()}.
+-spec cypher(neo4j_root(), binary(), property_list() | null) -> 
+                                            {cypher_result()} | {error, term()}.
 cypher(Neo, Query, Params) ->
   {_, URI} = find(<<"cypher">>, 1, Neo),
   Payload = jiffy:encode({[{query, Query}, {params, Params}]}),
@@ -405,8 +411,8 @@ delete_node(Node, Neo) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-get-properties-for-node
 %%
--spec get_node_properties(neo4j_node() | neo4j_id(), neo4j_root()) -> property_list()
-                                                        | {error, term()}.
+-spec get_node_properties(neo4j_node() | neo4j_id(), neo4j_root()) -> 
+                                              property_list() | {error, term()}.
 get_node_properties(Node, Neo) ->
   {_, URI} = find(<<"properties">>, 1, Node),
   retrieve(URI, Neo).
@@ -414,8 +420,8 @@ get_node_properties(Node, Neo) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-update-node-properties
 %%
--spec set_node_properties( neo4j_node()
-                         , property_list(), neo4j_root()) -> ok | {error, term()}.
+-spec set_node_properties( neo4j_node(), property_list(), neo4j_root()) -> 
+                                                          ok | {error, term()}.
 set_node_properties(Node, Props, Neo) ->
   {_, URI} = find(<<"properties">>, 1, Node),
   update(URI, jiffy:encode(Props), Neo).
@@ -423,7 +429,8 @@ set_node_properties(Node, Props, Neo) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html
 %%
--spec get_node_property(neo4j_node(), binary(), neo4j_root()) -> term() | {error, term()}.
+-spec get_node_property(neo4j_node(), binary(), neo4j_root()) -> 
+                                                      term() | {error, term()}.
 get_node_property(Node, Prop, Neo) when is_binary(Prop) ->
   {_, URI} = find(<<"property">>, 1, Node),
   retrieve(replace_param(URI, <<"key">>, Prop), Neo);
@@ -448,7 +455,8 @@ set_node_property(_, _, _, _) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-delete-all-properties-from-node
 %%
--spec delete_node_properties(neo4j_node(), neo4j_root()) -> ok | {error, term()}.
+-spec delete_node_properties(neo4j_node(), neo4j_root()) -> 
+                                                          ok | {error, term()}.
 delete_node_properties(Node, Neo) ->
   {_, URI} = find(<<"properties">>, 1, Node),
   delete(URI, Neo).
@@ -457,7 +465,8 @@ delete_node_properties(Node, Neo) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-node-properties.html#rest-api-delete-a-named-property-from-a-node
 %%
--spec delete_node_property(neo4j_node(), binary(), neo4j_root()) -> ok | {error, term()}.
+-spec delete_node_property(neo4j_node(), binary(), neo4j_root()) -> 
+                                                          ok | {error, term()}.
 delete_node_property(Node, Prop, Neo) when is_binary(Prop) ->
   {_, URI} = find(<<"properties">>, 1, Node),
   delete(<<URI/binary, "/", Prop/binary>>, Neo);
@@ -542,9 +551,10 @@ get_node_labels(Node, Neo) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-typed-relationships
 %%
--spec get_relationship(neo4j_root(), neo4j_id() | neo4j_relationship() | binary()) -> neo4j_relationship() | {error, term()}.
-get_relationship(_Neo, [{_, _}|_] = Relationship) ->
-  Relationship;
+-spec get_relationship(neo4j_root()
+                      , neo4j_id() | neo4j_relationship() | binary()
+                      ) -> neo4j_relationship() | {error, term()}.
+get_relationship(_Neo, [{_, _}|_] = Relationship) -> Relationship;
 get_relationship(Neo, Id) when is_binary(Id) ->
   case is_uri(Id) of
     true -> retrieve(Id, Neo);
@@ -595,7 +605,8 @@ create_relationship(FromNode, ToNode, Type, Props, Neo) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-nodes.html#rest-api-delete-node
 %%
--spec delete_relationship(neo4j_relationship(), neo4j_root()) -> ok | {error, term()}.
+-spec delete_relationship(neo4j_relationship(), neo4j_root()) -> 
+                                                          ok | {error, term()}.
 delete_relationship(Relationship, Neo) ->
   {_, URI} = find(<<"self">>, 1, Relationship),
   delete(URI, Neo).
@@ -603,7 +614,10 @@ delete_relationship(Relationship, Neo) ->
 %%
 %% http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-all-properties-on-a-relationship
 %%
--spec get_relationship_properties(neo4j_relationship() | neo4j_id(), neo4j_root()) -> property_list() | {error, term()}.
+-spec get_relationship_properties(
+                                neo4j_relationship() | neo4j_id()
+                                , neo4j_root()
+                                ) -> property_list() | {error, term()}.
 get_relationship_properties(Relationship, Neo) ->
   {_, URI} = find(<<"properties">>, 1, Relationship),
   retrieve(URI, Neo).
@@ -649,7 +663,8 @@ set_relationship_property(_, _, _, _) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationship-properties.html#rest-api-remove-properties-from-a-relationship
 %%
--spec delete_relationship_properties(neo4j_relationship(), neo4j_root()) -> ok | {error, term()}.
+-spec delete_relationship_properties(neo4j_relationship(), neo4j_root()) -> 
+                                                          ok | {error, term()}.
 delete_relationship_properties(Relationship, Neo) ->
   {_, URI} = find(<<"properties">>, 1, Relationship),
   delete(URI, Neo).
@@ -672,7 +687,8 @@ delete_relationship_property(_, _, _) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-indexes.html#rest-api-create-index
 %%
--spec create_index(neo4j_root(), binary(), [binary()]) -> property_list() | {error, term()}.
+-spec create_index(neo4j_root(), binary(), [binary()]) -> 
+                                          property_list() | {error, term()}.
 create_index(Neo, Label, PropKeys) ->
   {_, URI} = find(<<"index">>, 1, Neo),
   Payload = jiffy:encode({[{<<"property_keys">>, PropKeys}]}),
@@ -681,7 +697,8 @@ create_index(Neo, Label, PropKeys) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-indexes.html#rest-api-drop-index
 %%
--spec drop_index(neo4j_root(), binary(), binary()) -> property_list() | {error, term()}.
+-spec drop_index(neo4j_root(), binary(), binary()) -> 
+                                        property_list() | {error, term()}.
 drop_index(Neo, Label, Key) ->
   {_, URI} = find(<<"index">>, 1, Neo),
   delete(<<URI/binary, "/", Label/binary, "/", Key/binary>>, Neo).
@@ -699,7 +716,8 @@ list_indexes(Neo, Label) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-constraints.html#rest-api-create-uniqueness-constraint
 %%
--spec create_constraint(neo4j_root(), binary(), [binary()]) -> property_list() | {error, term()}.
+-spec create_constraint(neo4j_root(), binary(), [binary()]) -> 
+                                            property_list() | {error, term()}.
 create_constraint(Neo, Label, PropKeys) ->
   {_, URI} = find(<<"constraint">>, 1, Neo),
   Payload = jiffy:encode({[{<<"property_keys">>, PropKeys}]}),
@@ -708,10 +726,13 @@ create_constraint(Neo, Label, PropKeys) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-schema-constraints.html#rest-api-get-a-specific-uniqueness-constraint
 %%
--spec get_constraint(neo4j_root(), binary(), binary()) -> property_list() | {error, term()}.
+-spec get_constraint(neo4j_root(), binary(), binary()) -> 
+                                        property_list() | {error, term()}.
 get_constraint(Neo, Label, PropKey) ->
   {_, URI} = find(<<"constraint">>, 1, Neo),
-  retrieve(<<URI/binary, "/", Label/binary, "/uniqueness/", PropKey/binary>>, Neo).
+  retrieve(<<URI/binary, 
+          "/", Label/binary, "/uniqueness/", 
+          PropKey/binary>>, Neo).
 
 
 %%
@@ -750,7 +771,9 @@ get_constraints(Neo) ->
                                                            | {error, term()}.
 drop_constraint(Neo, Label, PropKey) ->
   {_, URI} = find(<<"constraint">>, 1, Neo),
-  delete(<<URI/binary, "/", Label/binary, "/uniqueness/", PropKey/binary>>, Neo).
+  delete(<<URI/binary, "/", 
+    Label/binary, "/uniqueness/", 
+    PropKey/binary>>, Neo).
 
 
 %%_* Traverse ------------------------------------------------------------------
@@ -777,8 +800,8 @@ drop_constraint(Neo, Label, PropKey) ->
 traverse(Node, Request, Neo) ->
   traverse(Node, Request, <<"node">>, Neo).
 
--spec traverse(neo4j_node(), property_list(), binary(), neo4j_root()) -> property_list()
-                                                         | {error, term()}.
+-spec traverse(neo4j_node(), property_list(), binary(), neo4j_root()) -> 
+                                              property_list() | {error, term()}.
 traverse(Node, Request, ReturnType, Neo) ->
   {_, URI} = find(<<"traverse">>, 1, Node),
   Payload = jiffy:encode(Request),
@@ -815,13 +838,14 @@ traverse(Node, Request, ReturnType, Neo) ->
 %%      neo4j:paged_traverse(PT). %% and so on, until you get an
 %%                                %% {error, not_found}
 %%
--spec paged_traverse(property_list(), neo4j_root()) -> property_list() | {error, term()}.
+-spec paged_traverse(property_list(), neo4j_root()) -> 
+                                          property_list() | {error, term()}.
 paged_traverse(PagedTraverse, Neo) ->
   {_, URI} = find(<<"self">>, 1, PagedTraverse),
   retrieve(URI, Neo).
 
--spec paged_traverse(neo4j_node(), property_list(), neo4j_root()) -> property_list()
-                                                       | {error, term()}.
+-spec paged_traverse(neo4j_node(), property_list(), neo4j_root()) -> 
+                                          property_list() | {error, term()}.
 paged_traverse(Node, Request, Neo) ->
   paged_traverse(Node, Request, [{<<"returnType">>, <<"node">>}], Neo).
 
@@ -854,8 +878,10 @@ paged_traverse(Node, Request, Props, Neo) ->
 %%
 %%      Neo = neo4j:connect([{base_uri, BaseUri}]),
 %%      Node = neo4j:get_node(Neo, 101),
-%%      AdditionalParams = {[{<<"relationships">>, {[ {<<"type">>, <<"to">>}
-%%                                                  , {<<"direction">>, <<"out">>}
+%%      AdditionalParams = {[{<<"relationships">>, {[ {<<"type">>
+%%                                                  , <<"to">>}
+%%                                                  , {<<"direction">>
+%%                                                  , <<"out">>}
 %%                                                  ]}
 %%                           }
 %%                          ]},
@@ -1009,13 +1035,16 @@ add_node_to_index(Neo, Node, Index, Key, Value, Uniqieness) ->
                           , {<<"value">>, Value}
                           ]}),
   {_, URI} = find(<<"node_index">>, 1, Neo),
-  create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqieness/binary>>, Payload, Neo).
+  create(<<URI/binary, "/", 
+        Index/binary, "?uniqueness=", 
+        Uniqieness/binary>>, Payload, Neo).
 
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node-from-an-index
 %%
--spec remove_from_node_index(neo4j_root(), neo4j_node(), binary()) -> term() | {error, term()}.
+-spec remove_from_node_index(neo4j_root(), neo4j_node(), binary()) -> 
+                                                      term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index) ->
   Id = id(Node),
   {_, URI} = find(<<"node_index">>, 1, Neo),
@@ -1024,33 +1053,47 @@ remove_from_node_index(Neo, Node, Index) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node-and-key-from-an-index
 %%
--spec remove_from_node_index(neo4j_root(), neo4j_node(), binary(), binary()) -> term() | {error, term()}.
+-spec remove_from_node_index(neo4j_root(), neo4j_node(), binary(), binary()) -> 
+                                                      term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index, Key) ->
   Id = id(Node),
   {_, URI} = find(<<"node_index">>, 1, Neo),
-  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Id/binary>>, Neo).
+  delete(<<URI/binary, "/", 
+        Index/binary, "/", 
+        Key/binary, "/", 
+        Id/binary>>, Neo).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-remove-all-entries-with-a-given-node
 %%
--spec remove_from_node_index(neo4j_root(), neo4j_node(), binary(), binary(), binary()) -> term() | {error, term()}.
+-spec remove_from_node_index(neo4j_root(), neo4j_node(), binary(), binary(), 
+                                          binary()) -> term() | {error, term()}.
 remove_from_node_index(Neo, Node, Index, Key, Value) ->
   Id = id(Node),
   {_, URI} = find(<<"node_index">>, 1, Neo),
-  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary, "/", Id/binary>>, Neo).
+  delete(<<URI/binary, "/", 
+          Index/binary, "/", 
+          Key/binary, "/", 
+          Value/binary, "/", 
+          Id/binary>>, Neo).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-find-node-by-exact-match
 %%
--spec find_node_exact(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
+-spec find_node_exact(neo4j_root(), binary(), binary(), binary()) -> 
+                                                      term() | {error, term()}.
 find_node_exact(Neo, Index, Key, Value) ->
   {_, URI} = find(<<"node_index">>, 1, Neo),
-  retrieve(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary>>, Neo).
+  retrieve(<<URI/binary, "/", 
+    Index/binary, "/", 
+    Key/binary, "/", 
+    Value/binary>>, Neo).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-find-node-by-query
 %%
--spec find_node_query(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
+-spec find_node_query(neo4j_root(), binary(), binary()) -> 
+                                                  term() | {error, term()}.
 find_node_query(Neo, Index, Query) ->
   {_, URI} = find(<<"node_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>, Neo).
@@ -1058,17 +1101,22 @@ find_node_query(Neo, Index, Query) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-indexes.html#rest-api-find-node-by-query
 %%
--spec find_node_query(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
+-spec find_node_query(neo4j_root(), binary(), binary(), binary()) -> 
+                                                    term() | {error, term()}.
 find_node_query(Neo, Index, Query, Ordering) ->
   {_, URI} = find(<<"node_index">>, 1, Neo),
-  retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary, "&ordering=", Ordering/binary>>, Neo).
+  retrieve(<<URI/binary, "/", Index/binary, 
+    "?query=", Query/binary, 
+      "&ordering=", 
+      Ordering/binary>>, Neo).
 
-%%_* Legacy relationship indices ------------------------------------------------------
+%%_* Legacy relationship indices -----------------------------------------------
 
 %%
 %% @doc
 %%
--spec create_relationship_index(neo4j_root(), binary()) -> neo4j_index() | {error, term()}.
+-spec create_relationship_index(neo4j_root(), binary()) -> 
+                                              neo4j_index() | {error, term()}.
 create_relationship_index(Neo, Name) ->
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
   Payload = jiffy:encode({[{<<"name">>, Name}]}),
@@ -1077,7 +1125,8 @@ create_relationship_index(Neo, Name) ->
 %%
 %% @doc
 %%
--spec create_relationship_index(neo4j_root(), binary(), property_list()) -> neo4j_index() | {error, term()}.
+-spec create_relationship_index(neo4j_root(), binary(), property_list()) -> 
+                                              neo4j_index() | {error, term()}.
 create_relationship_index(Neo, Name, Config) ->
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
   Payload = jiffy:encode({[ {<<"name">>, Name}
@@ -1096,7 +1145,8 @@ delete_relationship_index(Neo, Name) ->
 %%
 %% @doc
 %%
--spec relationship_indices(neo4j_root()) -> [{binary(), neo4j_index()}] | {error, term()}.
+-spec relationship_indices(neo4j_root()) -> 
+                        [{binary(), neo4j_index()}] | {error, term()}.
 relationship_indices(Neo) ->
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
   list(retrieve(URI, Neo)).
@@ -1137,13 +1187,16 @@ add_relationship_to_index(Neo, Relationship, Index, Key, Value, Uniqieness) ->
                           , {<<"value">>, Value}
                           ]}),
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
-  create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqieness/binary>>, Payload, Neo).
+  create(<<URI/binary, "/", 
+    Index/binary, "?uniqueness=", 
+    Uniqieness/binary>>, Payload, Neo).
 
 
 %%
 %% @doc
 %%
--spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary()) -> term() | {error, term()}.
+-spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), 
+  binary()) -> term() | {error, term()}.
 remove_from_relationship_index(Neo, Relationship, Index) ->
   Id = id(Relationship),
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
@@ -1152,33 +1205,44 @@ remove_from_relationship_index(Neo, Relationship, Index) ->
 %%
 %% @doc
 %%
--spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary(), binary()) -> term() | {error, term()}.
+-spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), 
+  binary(), binary()) -> term() | {error, term()}.
 remove_from_relationship_index(Neo, Relationship, Index, Key) ->
   Id = id(Relationship),
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
-  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Id/binary>>, Neo).
+  delete(<<URI/binary, "/", 
+    Index/binary, "/", 
+    Key/binary, "/",
+    Id/binary>>, Neo).
 
 %%
 %% @doc
 %%
--spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), binary(), binary(), binary()) -> term() | {error, term()}.
+-spec remove_from_relationship_index(neo4j_root(), neo4j_relationship(), 
+  binary(), binary(), binary()) -> term() | {error, term()}.
 remove_from_relationship_index(Neo, Relationship, Index, Key, Value) ->
   Id = id(Relationship),
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
-  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary, "/", Id/binary>>, Neo).
+  delete(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", 
+    Value/binary, "/", Id/binary>>, Neo).
 
 %%
 %% @doc
 %%
--spec find_relationship_exact(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
+-spec find_relationship_exact(neo4j_root(), binary(), binary(), binary()) -> 
+                                                      term() | {error, term()}.
 find_relationship_exact(Neo, Index, Key, Value) ->
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
-  retrieve(<<URI/binary, "/", Index/binary, "/", Key/binary, "/", Value/binary>>, Neo).
+  retrieve(<<URI/binary, "/", 
+    Index/binary, "/", 
+    Key/binary, "/", 
+    Value/binary>>, Neo).
 
 %%
 %% @doc
 %%
--spec find_relationship_query(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
+-spec find_relationship_query(neo4j_root(), binary(), binary()) -> 
+                                                      term() | {error, term()}.
 find_relationship_query(Neo, Index, Query) ->
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
   retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary>>, Neo).
@@ -1186,10 +1250,14 @@ find_relationship_query(Neo, Index, Query) ->
 %%
 %% @doc
 %%
--spec find_relationship_query(neo4j_root(), binary(), binary(), binary()) -> term() | {error, term()}.
+-spec find_relationship_query(neo4j_root(), binary(), binary(), binary()) -> 
+                                                      term() | {error, term()}.
 find_relationship_query(Neo, Index, Query, Ordering) ->
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
-  retrieve(<<URI/binary, "/", Index/binary, "?query=", Query/binary, "&ordering=", Ordering/binary>>, Neo).
+  retrieve(<<URI/binary, "/", 
+    Index/binary, "?query=", 
+    Query/binary, "&ordering=", 
+    Ordering/binary>>, Neo).
 
 %%_* Uniqueness (legacy) -------------------------------------------------------
 
@@ -1212,7 +1280,10 @@ unique_create_node(Neo, Props, Index, Key, Value, Uniqueness) ->
                           , {<<"value">>, Value}
                           , {<<"properties">>, Props}
                           ]}),
-  create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqueness/binary>>, Payload, Neo).
+  create(<<URI/binary, "/", 
+        Index/binary, "?uniqueness=", 
+        Uniqueness/binary>>, 
+        Payload, Neo).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-unique-indexes.html#rest-api-get-or-create-unique-relationship-create
@@ -1229,7 +1300,14 @@ unique_create_node(Neo, Props, Index, Key, Value, Uniqueness) ->
                                 , binary()
                                 , binary()
                                 ) -> neo4j_relationship() | {error, term()}.
-unique_create_relationship(Neo, StartNode, EndNode, Type, Index, Key, Value, Uniqueness) ->
+unique_create_relationship(Neo, 
+                      StartNode, 
+                      EndNode, 
+                      Type, 
+                      Index, 
+                      Key, 
+                      Value, 
+                      Uniqueness) ->
   {_, URI} = find(<<"relationship_index">>, 1, Neo),
   {_, StartUri} = find(<<"self">>, 1, StartNode),
   {_, EndUri} = find(<<"self">>, 1, EndNode),
@@ -1239,17 +1317,22 @@ unique_create_relationship(Neo, StartNode, EndNode, Type, Index, Key, Value, Uni
                           , {<<"start">>, StartUri}
                           , {<<"end">>, EndUri}
                           ]}),
-  create(<<URI/binary, "/", Index/binary, "?uniqueness=", Uniqueness/binary>>, Payload, Neo).
+  create(<<URI/binary, "/", 
+    Index/binary, "?uniqueness=", 
+    Uniqueness/binary>>, Payload, Neo).
 
 %%_* Legacy auto indices -------------------------------------------------------
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-auto-indexes.html#rest-api-find-node-by-exact-match-from-an-automatic-index
 %%
--spec find_node_auto_exact(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
+-spec find_node_auto_exact(neo4j_root(), binary(), binary()) -> 
+                                                    term() | {error, term()}.
 find_node_auto_exact(Neo, Key, Value) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
-  retrieve(<<URI/binary, "index/auto/node/", Key/binary, "/", Value/binary>>, Neo).
+  retrieve(<<URI/binary, "index/auto/node/", 
+    Key/binary, "/", 
+    Value/binary>>, Neo).
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-auto-indexes.html#rest-api-find-node-by-query-from-an-automatic-index
@@ -1262,15 +1345,19 @@ find_node_auto_query(Neo, Query) ->
 %%
 %% @doc
 %%
--spec find_relationship_auto_exact(neo4j_root(), binary(), binary()) -> term() | {error, term()}.
+-spec find_relationship_auto_exact(neo4j_root(), binary(), binary()) -> 
+                                                    term() | {error, term()}.
 find_relationship_auto_exact(Neo, Key, Value) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
-  retrieve(<<URI/binary, "index/auto/relationship/", Key/binary, "/", Value/binary>>, Neo).
+  retrieve(<<URI/binary, "index/auto/relationship/", 
+    Key/binary, "/", 
+    Value/binary>>, Neo).
 
 %%
 %% @doc
 %%
--spec find_relationship_auto_query(neo4j_root(), binary()) -> term() | {error, term()}.
+-spec find_relationship_auto_query(neo4j_root(), binary()) -> 
+                                                      term() | {error, term()}.
 find_relationship_auto_query(Neo, Query) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/relationship?query=", Query/binary>>, Neo).
@@ -1279,7 +1366,8 @@ find_relationship_auto_query(Neo, Query) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-create-an-auto-index-for-nodes-with-specific-configuration
 %%
--spec create_node_auto_index(neo4j_root(), property_list()) -> term() | {error, term()}.
+-spec create_node_auto_index(neo4j_root(), property_list()) -> 
+                                                      term() | {error, term()}.
 create_node_auto_index(Neo, Config) ->
   create_node_index(Neo, <<"node_auto_index">>, Config).
 
@@ -1305,7 +1393,8 @@ get_node_auto_index_status(Neo) ->
 %%
 %% @doc
 %%
--spec get_relationship_auto_index_status(neo4j_root()) -> boolean() | {error, term()}.
+-spec get_relationship_auto_index_status(neo4j_root()) -> 
+                                                  boolean() | {error, term()}.
 get_relationship_auto_index_status(Neo) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/relationship/status">>, Neo).
@@ -1314,7 +1403,8 @@ get_relationship_auto_index_status(Neo) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-enable-node-autoindexing
 %%
--spec set_node_auto_index_status(neo4j_root(), boolean()) -> ok | {error, term()}.
+-spec set_node_auto_index_status(neo4j_root(), boolean()) -> 
+                                                        ok | {error, term()}.
 set_node_auto_index_status(Neo, Status) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
   update(<<URI/binary, "index/auto/node/status">>, jiffy:encode(Status), Neo).
@@ -1322,16 +1412,21 @@ set_node_auto_index_status(Neo, Status) ->
 %%
 %% @doc
 %%
--spec set_relationship_auto_index_status(neo4j_root(), boolean()) -> ok | {error, term()}.
+-spec set_relationship_auto_index_status(neo4j_root(), boolean()) -> 
+                                                          ok | {error, term()}.
 set_relationship_auto_index_status(Neo, Status) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
-  update(<<URI/binary, "index/auto/relationship/status">>, jiffy:encode(Status), Neo).
+  update(<<URI/binary, 
+    "index/auto/relationship/status">>, 
+    jiffy:encode(Status), 
+    Neo).
 
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-lookup-list-of-properties-being-autoindexed
 %%
--spec get_node_auto_index_properties(neo4j_root()) -> boolean() | {error, term()}.
+-spec get_node_auto_index_properties(neo4j_root()) -> 
+                                                    boolean() | {error, term()}.
 get_node_auto_index_properties(Neo) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/node/properties">>, Neo).
@@ -1339,7 +1434,8 @@ get_node_auto_index_properties(Neo) ->
 %%
 %% @doc
 %%
--spec get_relationship_auto_index_properties(neo4j_root()) -> boolean() | {error, term()}.
+-spec get_relationship_auto_index_properties(neo4j_root()) -> 
+                                                    boolean() | {error, term()}.
 get_relationship_auto_index_properties(Neo) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
   retrieve(<<URI/binary, "index/auto/relationship/properties">>, Neo).
@@ -1348,35 +1444,43 @@ get_relationship_auto_index_properties(Neo) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-add-a-property-for-autoindexing-on-nodes
 %%
--spec add_node_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
+-spec add_node_auto_index_property(neo4j_root(), binary()) -> 
+                                                          ok | {error, term()}.
 add_node_auto_index_property(Neo, Property) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
-  create(<<URI/binary, "index/auto/node/properties">>, jiffy:encode(Property), Neo).
+  create(<<URI/binary, "index/auto/node/properties">>, 
+        jiffy:encode(Property), Neo).
 
 %%
 %% @doc
 %%
--spec add_relationship_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
+-spec add_relationship_auto_index_property(neo4j_root(), binary()) -> 
+                                                          ok | {error, term()}.
 add_relationship_auto_index_property(Neo, Property) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
-  create(<<URI/binary, "index/auto/relationship/properties">>, jiffy:encode(Property), Neo).
+  create(<<URI/binary, "index/auto/relationship/properties">>, 
+        jiffy:encode(Property), Neo).
 
 
 %%
 %% @doc http://docs.neo4j.org/chunked/milestone/rest-api-configurable-auto-indexes.html#rest-api-remove-a-property-for-autoindexing-on-nodes
 %%
--spec remove_node_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
+-spec remove_node_auto_index_property(neo4j_root(), binary()) -> 
+                                                          ok | {error, term()}.
 remove_node_auto_index_property(Neo, Property) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
-  delete(<<URI/binary, "index/auto/node/properties/", Property/binary>>, Neo).
+  delete(<<URI/binary, "index/auto/node/properties/", 
+        Property/binary>>, Neo).
 
 %%
 %% @doc
 %%
--spec remove_relationship_auto_index_property(neo4j_root(), binary()) -> ok | {error, term()}.
+-spec remove_relationship_auto_index_property(neo4j_root(), binary()) -> 
+                                                        ok | {error, term()}.
 remove_relationship_auto_index_property(Neo, Property) ->
   {_, URI} = find(<<"base_uri">>, 1, Neo),
-  delete(<<URI/binary, "index/auto/relationship/properties/", Property/binary>>, Neo).
+  delete(<<URI/binary, "index/auto/relationship/properties/", 
+        Property/binary>>, Neo).
 
 
 %%_* Internal ==================================================================
@@ -1385,7 +1489,9 @@ remove_relationship_auto_index_property(Neo, Property) ->
 %% http://docs.neo4j.org/chunked/stable/rest-api-service-root.html#rest-api-get-service-root
 %%
 -spec get_root(binary(), property_list()) -> neo4j_root() | {error, term()}.
-get_root(BaseURI, Options) when is_list(BaseURI)   -> get_root(list_to_binary(BaseURI), Options);
+get_root(BaseURI, Options) when is_list(BaseURI)   -> 
+  get_root(list_to_binary(BaseURI), Options);
+
 get_root(BaseURI, Options) when is_binary(BaseURI) ->
   Headers = headers(Options),
   io:format("headers: ~p~n",[Headers]),
@@ -1436,7 +1542,8 @@ create(URI, Neo) ->
       process_response(URI, Status, Client)
   end.
 
--spec create(binary(), binary() | iolist(), neo4j_root()) -> {neo4j_type()} | {error, term()}.
+-spec create(binary(), binary() | iolist(), neo4j_root()) -> 
+                                              {neo4j_type()} | {error, term()}.
 create(URI, Payload, Neo) ->
   case hackney:request(post, URI, get_headers(Neo), Payload) of
     {error, Reason} -> {error, Reason};
@@ -1458,7 +1565,9 @@ create(URI, Payload, Neo) ->
       process_response(URI, Status, Client)
   end.
 
--spec retrieve(binary(), neo4j_root()) -> neo4j_type() | binary() | [term()] | {error, term()}.
+-spec retrieve(binary(), neo4j_root()) -> 
+                          neo4j_type() | binary() | [term()] | {error, term()}.
+
 retrieve(URI, Neo) ->
   case hackney:request(get, URI, get_headers(Neo)) of
     {error, Reason} -> {error, Reason};
@@ -1502,7 +1611,12 @@ delete(URI, Neo) ->
 %%
 %% @doc http://docs.neo4j.org/chunked/stable/rest-api-relationships.html#rest-api-get-all-relationships
 %%
--spec get_relationship_by_direction(neo4j_node(), all | in | out, neo4j_root()) -> [neo4j_relationship()] | {error, term()}.
+-spec get_relationship_by_direction(
+    neo4j_node(), 
+    all | in | out, 
+    neo4j_root()
+    ) -> [neo4j_relationship()] | {error, term()}.
+
 get_relationship_by_direction(Node, all, Neo) ->
   {_, URI} = find(<<"all_relationships">>, 1, Node),
   retrieve(URI, Neo);
@@ -1515,7 +1629,9 @@ get_relationship_by_direction(Node, out, Neo) ->
 get_relationship_by_direction(_, _, _) ->
   {error, invalid_relationship_direction}.
 
--spec get_relationship_by_type(neo4j_node(), binary(), neo4j_root()) -> [neo4j_relationship()] | {error, term()}.
+-spec get_relationship_by_type(neo4j_node(), binary(), neo4j_root()) -> 
+                                      [neo4j_relationship()] | {error, term()}.
+
 get_relationship_by_type(Node, Type, Neo) ->
   get_relationship_by_type(Node, Type, all, Neo).
 
