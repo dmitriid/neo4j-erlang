@@ -1494,7 +1494,6 @@ get_root(BaseURI, Options) when is_list(BaseURI)   ->
 
 get_root(BaseURI, Options) when is_binary(BaseURI) ->
   Headers = headers(Options),
-  io:format("headers: ~p~n",[Headers]),
   case hackney:request(get, BaseURI, Headers) of
     {error, Reason} -> {error, Reason};
     {ok, StatusCode, _, Client} when StatusCode /= 200 ->
