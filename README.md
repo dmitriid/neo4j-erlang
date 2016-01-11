@@ -2,7 +2,7 @@
 
 This is a lightweight wrapper for [Neo4j REST API](http://docs.neo4j.org/chunked/stable/rest-api.html).
 
-### Current versions: 0.2.1 and 0.3
+### Current versions: [0.2.1 and 0.3](https://github.com/dmitriid/neo4j-erlang/releases)
 
 **If you want to use Basic Auth, use v0.3. Otherwise use 0.2.1.** Read on for more info.
 
@@ -48,6 +48,11 @@ Except for the new required parameter the rest of this documentation remains unc
 #### v0.2.1
 
 All the information below is unchanged for version 0.2.1.
+
+Thanks to:
+- @sdebnath and @zsoci for Diyalizing
+- @ppikula for fixing Hackney
+- @msmilom for adding rebar configuration
 
 *Breaking changes from [0.1](https://github.com/dmitriid/neo4j-erlang/tree/0.1)*
 
