@@ -2,7 +2,52 @@
 
 This is a lightweight wrapper for [Neo4j REST API](http://docs.neo4j.org/chunked/stable/rest-api.html).
 
-### Current version: 0.2.1
+### Current versions: 0.2.1 and 0.3
+
+**If you want to use Basic Auth, use v0.3. Otherwise use 0.2.1.** Read on for more info.
+
+#### v0.3
+
+Thanks to work by @dethtron5000, neo4j-erlang now supports Basic Auth. This means:
+
+- The overall API is not changed
+- There are breaking changes in the way you work with the API.
+
+**Changes**
+
+All API calls now require an additional parameter that contains request options. The options may contain the following parameters for Basic Auth:
+
+- `{user,  binary()}`
+- `{password, binary}`
+
+**Sample session for v0.3** (read below for v0.2.1)
+
+```
+### Sample session
+
+```erlang
+
+Options = [ {base_uri, <<"http://localhost:7474/db/data/">>}
+          , {user, <<"user">>}
+          , {password, <<"password">>}
+          ],
+
+Neo = neo4j:connect(Options),
+
+StartNode = neo4j:get_node(Neo, 101, Options),
+EndNode = neo4j:create_node(Neo, {[{<<"prop1">>, <<"key1">>}]}, Options),
+
+Relationship1 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>, Options),
+Relationship2 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>, {[{<<"prop2">>, <<"value2">>}]}, Options),
+
+ok = neo4j:delete_relationship(Relationship1, Options).
+```
+
+Except for the new required parameter the rest of this documentation remains unchanged for v0.3.
+
+#### v0.2.1
+
+All the information below is unchanged for version 0.2.1.
 
 *Breaking changes from [0.1](https://github.com/dmitriid/neo4j-erlang/tree/0.1)*
 
