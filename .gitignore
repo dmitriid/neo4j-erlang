@@ -12,3 +12,4 @@ relx
 *.html
 *.plt
 variables-*
+.rebar
