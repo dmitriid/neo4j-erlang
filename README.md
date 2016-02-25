@@ -37,8 +37,8 @@ Neo = neo4j:connect(Options),
 StartNode = neo4j:get_node(Neo, 101, Options),
 EndNode = neo4j:create_node(Neo, {[{<<"prop1">>, <<"key1">>}]}, Options),
 
-Relationship1 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>, Options),
-Relationship2 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>, {[{<<"prop2">>, <<"value2">>}]}, Options),
+Relationship1 = neo4j:create_relationship(StartNode, EndNode, <<"KNOWS">>, Options),
+Relationship2 = neo4j:create_relationship(StartNode, EndNode, <<"KNOWS">>, {[{<<"prop2">>, <<"value2">>}]}, Options),
 
 ok = neo4j:delete_relationship(Relationship1, Options).
 ```
@@ -79,8 +79,8 @@ Neo = neo4j:connect([{base_uri, <<"http://localhost:7474/db/data/">>}]),
 StartNode = neo4j:get_node(Neo, 101),
 EndNode = neo4j:create_node(Neo, {[{<<"prop1">>, <<"key1">>}]}),
 
-Relationship1 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>),
-Relationship2 = neo4:create_relationship(StartNode, EndNode, <<"KNOWS">>, {[{<<"prop2">>, <<"value2">>}]}),
+Relationship1 = neo4j:create_relationship(StartNode, EndNode, <<"KNOWS">>),
+Relationship2 = neo4j:create_relationship(StartNode, EndNode, <<"KNOWS">>, {[{<<"prop2">>, <<"value2">>}]}),
 
 ok = neo4j:delete_relationship(Relationship1).
 
