@@ -1793,8 +1793,12 @@ headers(Options) ->
   parse_auth(User, Pwd) ++ headers().
 
 -spec get_headers(neo4j_root()) -> property_list().
-get_headers(Neo) -> 
-  proplists:get_value(<<"headers">>, Neo).
+get_headers([_|_] = Neo) ->
+  proplists:get_value(<<"headers">>, Neo, []);
+get_headers({Neo}) ->
+  get_headers(Neo);
+get_headers(_) ->
+  [].
 
 -spec headers() -> property_list().
 headers() ->
