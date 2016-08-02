@@ -1820,8 +1820,8 @@ find(Key, Pos, L) when is_list(L) ->
   lists:keyfind(Key, Pos, L).
 
 prepend(Items, {Data}) when is_list(Data), is_list(Items) ->
-  {Items ++ Data};
+  Items ++ Data;
 prepend(Item, {Data}) when is_list(Data) ->
-  {[Item | Data]};
+  [Item | Data];
 prepend(Item, Data) when is_list(Data) ->
   [Item | Data].
